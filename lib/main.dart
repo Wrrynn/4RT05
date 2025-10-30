@@ -1,10 +1,5 @@
-//import 'package:artos/pages/homePage.dart';
-//import 'package:artos/pages/homePage.dart';
-//import 'package:artos/pages/home.dart';
-//import 'package:artos/pages/homePage.dart';
 import 'package:artos/pages/homePage.dart';
 import 'package:artos/pages/login.dart';
-//import 'package:artos/pages/login.dart';
 import 'package:flutter/material.dart';
 
 void main() {

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 //import 'package:artos/widgets/aurora.dart';
 import 'package:artos/widgets/glass.dart';
 import 'package:artos/widgets/bgPurple.dart';
+import 'package:artos/widgets/navbar.dart';
 // import 'package:artos/widgets/fireflies.dart';
 // import 'package:artos/widgets/plasma.dart';
 
@@ -14,17 +15,36 @@ class Homepage extends StatefulWidget {
 }
 
 class _HomepageState extends State<Homepage> {
+  int _pageIndex = 0;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBodyBehindAppBar: true, // biar aurora muncul di belakang AppBar
-      appBar: buildAppBar(),
-      body: BackgroundApp(
-        child : SafeArea(
-            child: buildMainContent(),
-          ),  
+    extendBody: true,
+    extendBodyBehindAppBar: true,
+    appBar: buildAppBar(),
+    body: BackgroundApp(
+      child: SafeArea(
+        child: IndexedStack(
+          index: _pageIndex,
+          children: [
+            buildMainContent(), // halaman Home
+            const Center(child: Text("Pool", style: TextStyle(color: Colors.white))),
+            const Center(child: Text("Scan", style: TextStyle(color: Colors.white))),
+            const Center(child: Text("Riwayat", style: TextStyle(color: Colors.white))),
+          ],
         ),
-      );
+      ),
+    ),
+
+    bottomNavigationBar: CustomNavBar(
+      selectedIndex: _pageIndex,
+      onItemTapped: (index) {
+        setState(() {
+          _pageIndex = index;
+        });
+      },
+    ),
+  );
   }
 
   PreferredSize buildAppBar() {
