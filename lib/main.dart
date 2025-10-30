@@ -1,6 +1,7 @@
 //import 'package:artos/pages/homePage.dart';
 //import 'package:artos/pages/homePage.dart';
-import 'package:artos/pages/login.dart';
+import 'package:artos/pages/home.dart';
+//import 'package:artos/pages/login.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -16,7 +17,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(fontFamily: 'Poppins'),
-      home: const Login()
+      home: const HomePage()
     );
   }
 }

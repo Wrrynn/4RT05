@@ -1,50 +1,54 @@
 import 'package:flutter/material.dart';
+import 'package:artos/widgets/bgPurple.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: appBar(),
-      backgroundColor: Color.fromARGB(255, 24, 24, 24),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          idCard(),
-          SizedBox(height: 10),
-          //fiturApp(),
-        ],
+    return BackgroundApp(
+      child: Scaffold(
+        appBar: appBar(),
+        backgroundColor: Colors.transparent,
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            idCard(),
+            SizedBox(height: 10),
+            //fiturApp(),
+          ],
+        ),
       ),
     );
   }
 
   Column fiturApp() {
     return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 20),
-              child: Text(
-                'Fitur Aplikasi',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 20),
+          child: Text(
+            'Fitur Aplikasi',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
             ),
-            SizedBox(height: 15),
-            Container(
-              height: 20,
-              color: Colors.green,
-              child: ListView.builder(
-                itemBuilder: (context, index) {
-                  return Container();
-                },
-              ),
-            ),
-          ],
-        );
+          ),
+        ),
+        SizedBox(height: 15),
+        Container(
+          height: 20,
+          color: Colors.green,
+          child: ListView.builder(
+            itemBuilder: (context, index) {
+              return Container();
+            },
+          ),
+        ),
+      ],
+    );
   }
 
   Container idCard() {
@@ -138,7 +142,7 @@ class HomePage extends StatelessWidget {
           fontWeight: FontWeight.bold,
         ),
       ),
-      backgroundColor: Color.fromARGB(255, 24, 24, 24),
+      backgroundColor: Colors.transparent,
       elevation: 0.0,
     );
   }
