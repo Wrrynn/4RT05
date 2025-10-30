@@ -64,7 +64,7 @@ class _HomepageState extends State<Homepage> {
               children: [
                 buildProfileCard(),
                 const SizedBox(height: 30),
-                buildAksesAplikasi(),
+                buildAksesAplikasi(context),
                 const SizedBox(height: 30),
                 buildFiturAplikasi(),
               ],
@@ -255,61 +255,94 @@ Widget buildProfileCard() {
   );
 }
 
-  Widget buildAksesAplikasi() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Akses Cepat",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+  Widget buildAksesAplikasi(BuildContext context) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text(
+        "Akses Cepat",
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      const SizedBox(height: 16),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          buildFeatureButton(
+            icon: 'assets/icons/topup.png',
+            label: 'Top Up',
+            onTap: () {
+              Navigator.pushNamed(context, '/topup');
+            },
           ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            buildFeatureButton(icon: 'assets/icons/topup.png', label: 'Top Up'),
-            buildFeatureButton(icon: 'assets/icons/sendmoney.png',label: 'Kirim Uang'),
-            buildFeatureButton(icon: 'assets/icons/payment.png', label: 'Bayar'),
-            buildFeatureButton(icon: 'assets/icons/qrcode.png', label: 'Scan'),
-          ],
-        ),
-      ],
-    );
-  }
+          buildFeatureButton(
+            icon: 'assets/icons/sendmoney.png',
+            label: 'Kirim Uang',
+            onTap: () {
+              Navigator.pushNamed(context, '/send');
+            },
+          ),
+          buildFeatureButton(
+            icon: 'assets/icons/payment.png',
+            label: 'Bayar',
+            onTap: () {
+              Navigator.pushNamed(context, '/payment');
+            },
+          ),
+          buildFeatureButton(
+            icon: 'assets/icons/qrcode.png',
+            label: 'Scan',
+            onTap: () {
+              Navigator.pushNamed(context, '/scan');
+            },
+          ),
+        ],
+      ),
+    ],
+  );
+}
 
-  Widget buildFeatureButton({required String icon, required String label}) {
-    return Column(
-      children: [
-        GlassContainer(
+Widget buildFeatureButton({
+  required String icon,
+  required String label,
+  required VoidCallback onTap,
+}) {
+  return Column(
+    children: [
+      GestureDetector(
+        onTap: onTap,
+        child: GlassContainer(
           width: 75,
           height: 75,
           borderRadius: BorderRadius.circular(15),
           gradient: const LinearGradient(
-            colors:[
-              const Color(0xFFAE00FF),
-              const Color(0xFF3C00FF),
+            colors: [
+              Color(0xFFAE00FF),
+              Color(0xFF3C00FF),
             ],
             begin: Alignment.topLeft,
-            end : Alignment.bottomRight,
+            end: Alignment.bottomRight,
           ),
-          
-          child: Center(child: Image.asset(icon, width: 40, height: 40)),
+          child: Center(
+            child: Image.asset(icon, width: 40, height: 40),
+          ),
         ),
-        const SizedBox(height: 5),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white, 
-            fontSize: 12,
-            fontWeight: FontWeight.w600),
+      ),
+      const SizedBox(height: 5),
+      Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
         ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
 
 Widget buildFiturAplikasi() {
   return Column(
