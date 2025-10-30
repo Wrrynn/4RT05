@@ -63,6 +63,11 @@ flutter:
   assets:
     - assets/images/21.png
     - assets/icons/Eye.png
+    - assets/icons/topup.png
+    - assets/icons/sendmoney.png
+    - assets/icons/qrcode.png
+    - assets/icons/payment.png
+    - assets/icons/management.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

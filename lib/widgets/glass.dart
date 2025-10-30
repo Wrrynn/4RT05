@@ -6,8 +6,11 @@ class GlassContainer extends StatelessWidget {
   final double height;
   final Widget child;
   final BorderRadius borderRadius;
-  final EdgeInsets padding; 
-  final EdgeInsets margin;  
+  final EdgeInsets padding;
+  final EdgeInsets margin;
+
+  final Gradient? gradient;
+  final Color? borderColor;
 
   const GlassContainer({
     super.key,
@@ -16,13 +19,15 @@ class GlassContainer extends StatelessWidget {
     required this.child,
     this.borderRadius = const BorderRadius.all(Radius.circular(20)),
     this.padding = const EdgeInsets.all(0),
-    this.margin = const EdgeInsets.all(0), 
+    this.margin = const EdgeInsets.all(0),
+    this.gradient,
+    this.borderColor,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: margin, 
+      margin: margin,
       child: ClipRRect(
         borderRadius: borderRadius,
         child: BackdropFilter(
@@ -30,12 +35,19 @@ class GlassContainer extends StatelessWidget {
           child: Container(
             width: width,
             height: height,
-            padding: padding, // ✅ beri jarak ke dalam
+            padding: padding,
             decoration: BoxDecoration(
               borderRadius: borderRadius,
-              color: Colors.white.withOpacity(0.08),
+              gradient: gradient ??
+                  LinearGradient(
+                    colors: [
+                      Colors.white.withOpacity(0.08),
+                      Colors.white.withOpacity(0.08),
+                    ],
+                  ),
               border: Border.all(
-                color: Colors.white.withOpacity(0.2),
+                // ✅ Jika borderColor ada → pakai, kalau tidak → default putih transparan
+                color: borderColor ?? Colors.white.withOpacity(0.2),
                 width: 1.5,
               ),
               boxShadow: [

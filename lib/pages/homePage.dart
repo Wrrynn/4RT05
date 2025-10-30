@@ -1,7 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:artos/widgets/aurora.dart';
-import 'package:artos/widgets/glass.dart'; // pastikan file glass.dart sudah ada
+//import 'package:artos/widgets/aurora.dart';
+import 'package:artos/widgets/glass.dart';
+import 'package:artos/widgets/bgPurple.dart';
 // import 'package:artos/widgets/fireflies.dart';
 // import 'package:artos/widgets/plasma.dart';
 
@@ -18,16 +19,12 @@ class _HomepageState extends State<Homepage> {
     return Scaffold(
       extendBodyBehindAppBar: true, // biar aurora muncul di belakang AppBar
       appBar: buildAppBar(),
-      body: Stack(
-        children: [
-          const AnimatedPurpleAuroraBackground(), // background aurora
-          // const FloatingFireflies(count: 20), // opsional, kunang-kunang
-
-          // Konten utama
-          SafeArea(child: buildMainContent()),
-        ],
-      ),
-    );
+      body: BackgroundApp(
+        child : SafeArea(
+            child: buildMainContent(),
+          ),  
+        ),
+      );
   }
 
   PreferredSize buildAppBar() {
@@ -56,96 +53,263 @@ class _HomepageState extends State<Homepage> {
   }
 
   /// Konten utama
-Widget buildMainContent() {
-  return Column(
-    children: [
-      Expanded(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              buildProfileCard(),
-              const SizedBox(height: 30),
-              buildFiturAplikasi(),
-              const SizedBox(height: 30),
-              buildManajemenKeuangan(),
-              const SizedBox(height: 30),
-              buildLaporanKeuangan(),
-            ],
+  Widget buildMainContent() {
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                buildProfileCard(),
+                const SizedBox(height: 30),
+                buildAksesAplikasi(),
+                const SizedBox(height: 30),
+                buildFiturAplikasi(),
+              ],
+            ),
           ),
         ),
-      ),
-    ],
-  );
-}
+      ],
+    );
+  }
 
 Widget buildProfileCard() {
   return GlassContainer(
     width: double.infinity,
-    height: 120,
+    height: 235,
     borderRadius: BorderRadius.circular(20),
-    child: Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        children: [
-          // Avatar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(50),
-            child: Image.asset(
-              'assets/images/21.png', // ganti sesuai asset kamu
-              width: 70,
-              height: 70,
-              fit: BoxFit.cover,
+    gradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        const Color(0xFFF6339A).withOpacity(0.2), 
+        const Color(0xFFAC00FF).withOpacity(0.2), 
+        const Color(0xFF2B00FF).withOpacity(0.2),
+      ],
+    ),
+    borderColor: Colors.white.withOpacity(0.1),
+    padding: const EdgeInsets.all(16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Avatar
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.3),
+                  width: 2,
+                ),
+              ),
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/images/21.png',
+                  fit: BoxFit.cover,
+                ),
+              ),
             ),
-          ),
-          const SizedBox(width: 16),
+            const SizedBox(width: 15),
 
-          // Info User
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
-                Text(
-                  "Nama",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Nama",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                Text(
-                  "ID xxxx",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
+                  const SizedBox(height: 4),
+                  Row(
+                    children: const [
+                      Text(
+                        "ID xxxx",
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
+                      ),
+                      SizedBox(width: 6),
+                      Icon(
+                        Icons.copy_rounded,
+                        size: 18,
+                        color: Colors.white70,
+                      ),
+                    ],
                   ),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  "XXXXXX",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
+                  const SizedBox(height: 10),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: const [
+                      Text(
+                        "Rp. 0000",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      Spacer(),
+                      Icon(
+                        Icons.remove_red_eye_outlined,
+                        color: Colors.white70,
+                        size: 26,
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ],
+        ),
 
-          // Icon Mata
-          const Icon(
-            Icons.remove_red_eye_outlined,
-            color: Colors.white70,
-            size: 26,
-          ),
-        ],
-      ),
+        const SizedBox(height: 18),
+
+        // Pemasukan & Pengeluaran
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                height: 80,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withOpacity(0.2)),
+                  color: Colors.white.withOpacity(0.05),
+                ),
+                padding: const EdgeInsets.all(10),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Pemasukan",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      "Rp. 000",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Container(
+                height: 80,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withOpacity(0.2)),
+                  color: Colors.white.withOpacity(0.05),
+                ),
+                padding: const EdgeInsets.all(10),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Pengeluaran",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      "Rp. 000",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     ),
   );
 }
+
+  Widget buildAksesAplikasi() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Akses Cepat",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            buildFeatureButton(icon: 'assets/icons/topup.png', label: 'Top Up'),
+            buildFeatureButton(icon: 'assets/icons/sendmoney.png',label: 'Kirim Uang'),
+            buildFeatureButton(icon: 'assets/icons/payment.png', label: 'Bayar'),
+            buildFeatureButton(icon: 'assets/icons/qrcode.png', label: 'Scan'),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget buildFeatureButton({required String icon, required String label}) {
+    return Column(
+      children: [
+        GlassContainer(
+          width: 75,
+          height: 75,
+          borderRadius: BorderRadius.circular(15),
+          gradient: const LinearGradient(
+            colors:[
+              const Color(0xFFAE00FF),
+              const Color(0xFF3C00FF),
+            ],
+            begin: Alignment.topLeft,
+            end : Alignment.bottomRight,
+          ),
+          
+          child: Center(child: Image.asset(icon, width: 40, height: 40)),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white, 
+            fontSize: 12,
+            fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
 
 Widget buildFiturAplikasi() {
   return Column(
@@ -160,103 +324,92 @@ Widget buildFiturAplikasi() {
         ),
       ),
       const SizedBox(height: 16),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          buildFeatureButton(icon: 'assets/icons/Eye.png', label: 'Top Up'),
-          buildFeatureButton(icon: 'assets/icons/Eye.png', label: 'Kirim Uang'),
-          buildFeatureButton(icon: 'assets/icons/Eye.png', label: 'Bayar'),
-          buildFeatureButton(icon: 'assets/icons/Eye.png', label: 'Scan'),
+
+      fiturButton(
+        text: "Manajemen Aplikasi", 
+        iconPath: 'assets/icons/management.png',
+        onTap: (){
+          Navigator.pushNamed(context, '/login');
+        }),
+      
+      fiturButton(
+        text: "Laporan Keuangan", 
+        iconPath: 'assets/icons/management.png')
+    ],
+  );
+}
+Widget fiturButton({
+  required String text,
+  required String iconPath,
+  VoidCallback? onTap,
+}) {
+  return GestureDetector(
+    onTap: onTap,
+    child: GlassContainer(
+      width: double.infinity,
+      height: 85,
+      borderRadius: BorderRadius.circular(18),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      margin: const EdgeInsets.only(bottom: 12),
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          const Color(0xFFAC00FF).withOpacity(0.15),
+          const Color(0xFF2B00FF).withOpacity(0.15),
         ],
       ),
-    ],
-  );
-}
+      borderColor: Colors.white.withOpacity(0.15),
 
-Widget buildManajemenKeuangan() {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text(
-        "Manajemen Keuangan",
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      const SizedBox(height: 16),
-      GlassContainer(
-        width: double.infinity,
-        height: 120,
-        borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              buildSmallGlassButton(),
-              buildSmallGlassButton(),
-              buildSmallGlassButton(),
-            ],
+      child: Row(
+        children: [
+          // Ikon kiri
+          GlassContainer(
+            width: 55,
+            height: 55,
+            borderRadius: BorderRadius.circular(15),
+            gradient: const LinearGradient(
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+              colors: [
+                Color(0xFFAC00FF),
+                Color(0xFF3C00FF),
+              ],
+            ),
+            child: Center(
+              child: Image.asset(
+                iconPath, // 🔹 bisa diubah bebas
+                width: 28,
+                height: 28,
+                color: Colors.white,
+              ),
+            ),
           ),
-        ),
-      ),
-    ],
-  );
-}
 
-Widget buildLaporanKeuangan() {
-  return GlassContainer(
-    width: double.infinity,
-    height: 60,
-    borderRadius: BorderRadius.circular(16),
-    child: const Center(
-      child: Text(
-        "Laporan Keuangan",
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-        ),
+          const SizedBox(width: 16),
+
+          // teks fitur (dinamis)
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+
+          // Panah kanan
+          const Icon(
+            Icons.arrow_forward_ios_rounded,
+            color: Colors.white70,
+            size: 18,
+          ),
+        ],
       ),
     ),
-  );
-}
-
-Widget buildFeatureButton({required String icon, required String label}) {
-  return Column(
-    children: [
-      GlassContainer(
-        width: 80,
-        height: 80,
-        borderRadius: BorderRadius.circular(16),
-        child: Center(
-          child: Image.asset(icon, width: 28, height: 28),
-        ),
-      ),
-      const SizedBox(height: 25),
-      Text(
-        label,
-        style: const TextStyle(
-          color: Colors.white70,
-          fontSize: 13,
-        ),
-      ),
-    ],
-  );
-}
-
-Widget buildSmallGlassButton() {
-  return GlassContainer(
-    width: 70,
-    height: 70,
-    borderRadius: BorderRadius.circular(16),
-    child: const Icon(
-      Icons.insert_chart_outlined,
-      color: Colors.white70,
-      size: 30,
-    ),
+    
   );
 }
 
