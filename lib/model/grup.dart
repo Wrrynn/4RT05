@@ -1,5 +1,5 @@
 class Grup {
-  // 🧩 Atribut privat
+  // Atribut privat
   final int _idGrup;
   String _namaGrup;
   String _passwordGrup;
@@ -45,7 +45,9 @@ class Grup {
 
   
   // Method
-  bool buatGrup(String nama, String pass, double target, String durasi) {}
+  bool buatGrup(String nama, String pass, double target, String durasi) {
+    return true;
+  }
   void tambahTarget(double jumlah) {}
 
   String getInformasiGrup() {

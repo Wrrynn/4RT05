@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 class Kategori {
   //private atributes
   final int _idKategori;
@@ -43,7 +41,12 @@ class Kategori {
   set totalPengeluaran(double value) => _totalPengerluaran = value;
 
   //method
-  bool tambahKategori(String nama, String tipe, double batas) {}
-  double hitungTotalKategori() {}
+  bool tambahKategori(String nama, String tipe, double batas) {
+    return true;
+  }
+
+  double hitungTotalKategori() {
+    return 0;
+  }
 
 }

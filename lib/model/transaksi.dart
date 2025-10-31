@@ -63,7 +63,9 @@ class Transaksi {
   set targetTransaksi(String value) => _targetTransaksi = value;
 
   // method
-  bool buatTransaksi() {}
+  bool buatTransaksi() {
+    return true;
+  }
 
   String getBuktiTransaksi() {
     return '''

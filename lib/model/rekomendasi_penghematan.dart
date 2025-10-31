@@ -3,7 +3,7 @@ import 'laporan_keuangan.dart';
 class RekomendasiPenghematan {
   final int _idPengguna;
   String _saran;
-  LaporanKeuangan _laporan; // ✅ atribut laporan sesuai UML
+  LaporanKeuangan _laporan;
 
   // Constructor
   RekomendasiPenghematan({
@@ -17,15 +17,20 @@ class RekomendasiPenghematan {
   int get idPengguna => _idPengguna;
 
   String get saran => _saran;
-  set saran(String value) => _saran = saran;
+  set saran(String value) => _saran = value;
 
   LaporanKeuangan get laporan => _laporan;
-
-  set saran(String value) => _saran = value;
   set laporan(LaporanKeuangan value) => _laporan = value;
 
-  // Method
-  void analisisLaporan(LaporanKeuangan laporan) {}
+  // Method analisis (contoh sederhana)
+  void analisisLaporan() {
+    // Misalnya, jika pengeluaran lebih besar dari pemasukan
+    if (_laporan.totalPengeluaran > _laporan.totalPemasukan) {
+      _saran = "Pengeluaran melebihi pemasukan. Kurangi biaya tidak penting.";
+    } else {
+      _saran = "Keuangan stabil. Pertahankan pola pengeluaran saat ini.";
+    }
+  }
 
   String generateSaran() {
     if (_saran.isEmpty) {

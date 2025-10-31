@@ -33,6 +33,8 @@ class Topup {
   String get status => _status;
   set status(String value) => _status = value;
 
-  bool prosesTopUp() {}
+  bool prosesTopUp() {
+    return true;
+  }
   void konfirmasiTopUP() {}
 }

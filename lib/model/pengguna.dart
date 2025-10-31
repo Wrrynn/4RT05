@@ -45,6 +45,10 @@ class Pengguna {
   set saldo(double value) => _saldo = value;
 
   // Method 
-  bool login() {}
-  bool register() {}
+  bool login() {
+    return true;
+  }
+  bool register() {
+    return true;
+  }
 }
