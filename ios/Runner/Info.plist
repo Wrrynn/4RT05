@@ -26,6 +26,9 @@
 	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
+	<!-- Permission for camera usage -->
+	<key>NSCameraUsageDescription</key>
+	<string>App membutuhkan akses kamera untuk memindai QR code.</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
 	<key>UISupportedInterfaceOrientations</key>

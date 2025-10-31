@@ -1,5 +1,9 @@
 import 'package:artos/pages/homePage.dart';
 import 'package:artos/pages/login.dart';
+import 'package:artos/pages/payment.dart';
+import 'package:artos/pages/scan.dart';
+import 'package:artos/pages/send.dart';
+import 'package:artos/pages/topup.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -15,12 +19,16 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(fontFamily: 'Poppins'),
-      
+
       initialRoute: '/login',
 
       routes: {
-        '/login':(context) => const Login(),
-        '/home': (context) => const Homepage()
+        '/login': (context) => const Login(),
+        '/home': (context) => const Homepage(),
+        '/topup': (context) => const TopUpPage(),
+        '/send': (context) => const SendPage(),
+        '/payment': (context) => const PaymentPage(),
+        '/scan': (context) => const ScanPage(),
       },
     );
   }
