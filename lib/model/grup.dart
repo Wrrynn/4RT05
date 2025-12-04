@@ -5,8 +5,8 @@ class Grup {
   String _passwordGrup;
   double _target;
   String _durasi;
-  double _totalSaldo;
-  DateTime _dibuatPada;
+  final double _totalSaldo;
+  final DateTime _dibuatPada;
 
   // Constructor
   Grup({

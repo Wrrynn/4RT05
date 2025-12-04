@@ -1,6 +1,7 @@
 import 'package:artos/pages/homePage.dart';
 import 'package:artos/pages/login.dart';
 import 'package:flutter/material.dart';
+import 'package:artos/pages/topup.dart';
 
 void main() {
   runApp(const MyApp());
@@ -20,7 +21,8 @@ class MyApp extends StatelessWidget {
 
       routes: {
         '/login':(context) => const Login(),
-        '/home': (context) => const Homepage()
+        '/home': (context) => const Homepage(),
+        '/topup': (context) => const TopUpPage()
       },
     );
   }

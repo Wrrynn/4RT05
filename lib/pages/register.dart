@@ -119,6 +119,25 @@ class _RegisterState extends State<Register> {
                     ),
                     const SizedBox(height: 16),
 
+                     // 🔹 Phone Number
+                    TextField(
+                      keyboardType: TextInputType.phone,
+                      style: TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        labelText: 'Phone Number',
+                        labelStyle: TextStyle(color: Colors.white70),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(10)),
+                          borderSide: BorderSide(color: Colors.white38),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(10)),
+                          borderSide: BorderSide(color: Colors.pinkAccent),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height:16),
+
                     // 🔹 Password
                     TextField(
                       obscureText: _obscurePassword,
@@ -183,7 +202,7 @@ class _RegisterState extends State<Register> {
                       ),
                     ),
                     const SizedBox(height: 30),
-
+                    
                     // 🔹 Tombol Register
                     buildRegisterButton(() {
                       ScaffoldMessenger.of(context).showSnackBar(
