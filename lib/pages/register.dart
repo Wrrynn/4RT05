@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:artos/widgets/glass.dart';
 import 'login.dart';
+import 'package:artos/service/auth_service.dart';
 
 class Register extends StatefulWidget {
   const Register({super.key});
@@ -12,23 +13,39 @@ class Register extends StatefulWidget {
 class _RegisterState extends State<Register> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  final TextEditingController _fullNameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
+  @override
+  void dispose() {
+    _fullNameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmController.dispose();
+    super.dispose();
+  }
 
   Widget buildRegisterButton(VoidCallback onPressed) {
     return SizedBox(
       width: double.infinity,
       height: 50,
       child: ElevatedButton(
-        onPressed: onPressed,
+        onPressed: _isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.pinkAccent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
         ),
-        child: const Text(
-          'Create Account',
-          style: TextStyle(fontSize: 18, color: Colors.white),
-        ),
+        child: _isLoading
+            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+            : const Text(
+                'Create Account',
+                style: TextStyle(fontSize: 18, color: Colors.white),
+              ),
       ),
     );
   }
@@ -61,12 +78,16 @@ class _RegisterState extends State<Register> {
           child: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
-              child: GlassContainer(
+              child: Form(
+                key: _formKey,
+                child: GlassContainer(
                 width: double.infinity,
                 height: 600,
                 borderRadius: BorderRadius.circular(25),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 32,
+                ),
                 margin: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -84,9 +105,10 @@ class _RegisterState extends State<Register> {
                     const SizedBox(height: 25),
 
                     // 🔹 Full Name
-                    const TextField(
-                      style: TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
+                    TextFormField(
+                      controller: _fullNameController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
                         labelText: 'Full Name',
                         labelStyle: TextStyle(color: Colors.white70),
                         enabledBorder: OutlineInputBorder(
@@ -98,13 +120,21 @@ class _RegisterState extends State<Register> {
                           borderSide: BorderSide(color: Colors.pinkAccent),
                         ),
                       ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) {
+                          return 'Full name is required';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
 
                     // 🔹 Email
-                    const TextField(
-                      style: TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
+                    TextFormField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
                         labelText: 'Email',
                         labelStyle: TextStyle(color: Colors.white70),
                         enabledBorder: OutlineInputBorder(
@@ -116,11 +146,19 @@ class _RegisterState extends State<Register> {
                           borderSide: BorderSide(color: Colors.pinkAccent),
                         ),
                       ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Email is required';
+                        final email = v.trim();
+                        final emailRegex = RegExp(r"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+                        if (!emailRegex.hasMatch(email)) return 'Enter a valid email';
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
 
                     // 🔹 Password
-                    TextField(
+                    TextFormField(
+                      controller: _passwordController,
                       obscureText: _obscurePassword,
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
@@ -148,11 +186,17 @@ class _RegisterState extends State<Register> {
                           },
                         ),
                       ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Password is required';
+                        if (v.length < 6) return 'Password must be at least 6 characters';
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
 
                     // 🔹 Confirm Password
-                    TextField(
+                    TextFormField(
+                      controller: _confirmController,
                       obscureText: _obscureConfirmPassword,
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
@@ -181,11 +225,40 @@ class _RegisterState extends State<Register> {
                           },
                         ),
                       ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Please confirm your password';
+                        if (v != _passwordController.text) return 'Passwords do not match';
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 30),
 
                     // 🔹 Tombol Register
-                    buildRegisterButton(() {
+                    buildRegisterButton(() async {
+                      if (!_formKey.currentState!.validate()) return;
+                      final email = _emailController.text.trim();
+                      final password = _passwordController.text;
+
+                      setState(() {
+                        _isLoading = true;
+                      });
+
+                      final err = await AuthService.signUp(email, password);
+
+                      setState(() {
+                        _isLoading = false;
+                      });
+
+                      if (err != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(err)),
+                        );
+                        return;
+                      }
+
+                      // debug: print created user info to console
+                      AuthService.debugPrintCurrentUser();
+
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Account created successfully!'),
@@ -213,7 +286,9 @@ class _RegisterState extends State<Register> {
                           onTap: () {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => const Login()),
+                              MaterialPageRoute(
+                                builder: (context) => const Login(),
+                              ),
                             );
                           },
                           child: const Text(

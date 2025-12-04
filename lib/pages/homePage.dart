@@ -46,6 +46,9 @@ class _HomepageState extends State<Homepage> {
         onItemTapped: (index) {
           setState(() {
             _pageIndex = index;
+            if (index == 2) {
+              Navigator.of(context, rootNavigator: true).pushNamed('/scan');
+            }
           });
         },
       ),
@@ -308,7 +311,10 @@ class _HomepageState extends State<Homepage> {
               icon: 'assets/icons/payment.png',
               label: 'Bayar',
               onTap: () {
-                Navigator.pushNamed(context, '/payment');
+                Navigator.of(
+                  context,
+                  rootNavigator: true,
+                ).pushNamed('/payment');
               },
             ),
             buildFeatureButton(
