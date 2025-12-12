@@ -172,23 +172,28 @@ class _LoginState extends State<Login> {
 
                     // 🔹 Tombol Login
                     buildLoginButton(() async {
-                      final errorMessage = await _loginCtrl.login(
+                      final pengguna = await _loginCtrl.login(
                         _emailCtrl.text,
                         _passCtrl.text,
                       );
 
-                      if (errorMessage != null) {
-                        // pesan error ke user
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text(errorMessage)));
+                      if (pengguna == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Email atau password salah"),
+                          ),
+                        );
                         return;
                       }
 
-                      // Login sukses
+                      // ✔ Login Berhasil → Pindah ke Homepage
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(builder: (_) => const Homepage()),
+                        MaterialPageRoute(
+                          builder: (_) => Homepage(
+                            pengguna: pengguna, // <-- kirim data user
+                          ),
+                        ),
                       );
                     }),
 

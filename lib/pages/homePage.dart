@@ -6,9 +6,11 @@ import 'package:artos/widgets/bgPurple.dart';
 import 'package:artos/widgets/navbar.dart';
 // import 'package:artos/widgets/fireflies.dart';
 // import 'package:artos/widgets/plasma.dart';
+import 'package:artos/model/pengguna.dart';
 
 class Homepage extends StatefulWidget {
-  const Homepage({super.key});
+  final Pengguna pengguna;
+  const Homepage({super.key, required this.pengguna});
 
   @override
   State<Homepage> createState() => _HomepageState();
@@ -142,9 +144,9 @@ Widget buildProfileCard() {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "Nama",
-                    style: TextStyle(
+                  Text(
+                    widget.pengguna.namaLengkap,
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -152,10 +154,10 @@ Widget buildProfileCard() {
                   ),
                   const SizedBox(height: 4),
                   Row(
-                    children: const [
+                    children: [
                       Text(
-                        "ID xxxx",
-                        style: TextStyle(
+                        "ID ${widget.pengguna.idPengguna}",
+                        style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 14,
                         ),
@@ -171,10 +173,10 @@ Widget buildProfileCard() {
                   const SizedBox(height: 10),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
-                    children: const [
+                    children:[
                       Text(
-                        "Rp. 0000",
-                        style: TextStyle(
+                        "Rp. ${widget.pengguna.saldo}",
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 24,
                           fontWeight: FontWeight.w800,

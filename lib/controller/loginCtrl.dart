@@ -1,10 +1,11 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:artos/service/db_service.dart';
+import 'package:artos/model/pengguna.dart';
 
 class LoginController {
   final supabase = DBService.client;
 
-  Future<String?> login(String email, String password) async {
+  Future<Pengguna?> login(String email, String password) async {
     try {
       // 1️⃣ Login via Supabase Auth
       final response = await supabase.auth.signInWithPassword(
@@ -15,10 +16,10 @@ class LoginController {
       final user = response.user;
 
       if (user == null) {
-        return "Login gagal, user tidak ditemukan.";
+        return null; // Gagal login
       }
 
-      // 2️⃣ Ambil data pengguna dari tabel Pengguna berdasarkan UID
+      // 2️⃣ Ambil data pengguna dari tabel berdasarkan UID
       final data = await supabase
           .from('Pengguna')
           .select()
@@ -26,16 +27,18 @@ class LoginController {
           .maybeSingle();
 
       if (data == null) {
-        return "Data pengguna tidak ditemukan di database.";
+        return null; // Data pengguna tidak ditemukan
       }
 
-      // 3️⃣ Jika sukses
-      return null; // sukses
+      // 3️⃣ Convert JSON → Model Pengguna
+      final pengguna = Pengguna.fromJson(data);
 
-    } on AuthException catch (e) {
-      return e.message; // Email salah, password salah, atau tidak terdaftar
-    } catch (e) {
-      return "Terjadi kesalahan, coba lagi.";
+      return pengguna; // sukses
+
+    } on AuthException catch (_) {
+      return null; // Email atau password salah
+    } catch (_) {
+      return null; // Error lain
     }
   }
 }
