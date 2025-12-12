@@ -3,6 +3,8 @@ import 'package:artos/pages/login.dart';
 import 'package:flutter/material.dart';
 import 'package:artos/pages/topup.dart';
 import 'package:artos/pages/send.dart';
+import 'package:artos/pages/payment.dart';
+
 
 void main() {
   runApp(const MyApp());
@@ -24,7 +26,8 @@ class MyApp extends StatelessWidget {
         '/login':(context) => const Login(),
         '/home': (context) => const Homepage(),
         '/topup': (context) => const TopUpPage(),
-        '/send' : (context) => const SendMoneyPage()
+        '/send' : (context) => const SendMoneyPage(),
+        '/payment': (context) => const PaymentPage()
       },
     );
   }
