@@ -1,28 +1,25 @@
 class Topup {
-  //private atributes
   final int _idTopUp;
-  final int _idPengguna;
+  final String _idPenggunaTopup;
   double _jumlah;
   String _metode;
   String _status;
 
-  Topup ({
+  Topup({
     required int idTopUp,
-    required int idPengguna,
+    required String idPenggunaTopup,
     required double jumlah,
     required String metode,
     required String status,
-  }) : 
-  _idTopUp = idTopUp,
-  _idPengguna = idPengguna,
-  _jumlah = jumlah,
-  _metode = metode,
-  _status = status;
+  })  : _idTopUp = idTopUp,
+        _idPenggunaTopup = idPenggunaTopup,
+        _jumlah = jumlah,
+        _metode = metode,
+        _status = status;
 
-  // Getter & Setter
+  // getter & setter
   int get idTopUp => _idTopUp;
-
-  int get idPengguna => _idPengguna;
+  String get idPenggunaTopup => _idPenggunaTopup;
 
   double get jumlah => _jumlah;
   set jumlah(double value) => _jumlah = value;
@@ -33,8 +30,13 @@ class Topup {
   String get status => _status;
   set status(String value) => _status = value;
 
-  bool prosesTopUp() {
-    return true;
+  factory Topup.fromMap(Map<String, dynamic> map) {
+    return Topup(
+      idTopUp: map['id_topup'] ?? 0,
+      idPenggunaTopup: map['id_pengguna_topup'] ?? '',
+      jumlah: map['jumlah']?.toDouble() ?? 0.0,
+      metode: map['metode'] ?? '',
+      status: map['status'] ?? '',
+    );
   }
-  void konfirmasiTopUP() {}
 }

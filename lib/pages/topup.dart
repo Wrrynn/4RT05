@@ -2,6 +2,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:artos/widgets/bgPurple.dart';
 import 'package:artos/widgets/glass.dart';
+import 'package:artos/controller/topUpCtrl.dart';
+import 'package:artos/model/pengguna.dart';
 
 enum TopUpSource { debitCard, externalWallet }
 
@@ -15,6 +17,15 @@ class TopUpPage extends StatefulWidget {
 class _TopUpPageState extends State<TopUpPage> {
   final TextEditingController _amountController = TextEditingController();
   TopUpSource _selectedSource = TopUpSource.debitCard;
+
+  late Pengguna currentUser;
+  final TopupController _topupCtrl = TopupController();
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    currentUser = ModalRoute.of(context)!.settings.arguments as Pengguna;
+  }
 
   @override
   void dispose() {
@@ -82,8 +93,10 @@ class _TopUpPageState extends State<TopUpPage> {
               ),
             ),
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white),
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Colors.white,
+              ),
               onPressed: () => Navigator.pop(context),
             ),
           ),
@@ -102,10 +115,7 @@ class _TopUpPageState extends State<TopUpPage> {
       gradient: const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [
-          Color(0xFFAC00FF),
-          Color(0xFF3C00FF),
-        ],
+        colors: [Color(0xFFAC00FF), Color(0xFF3C00FF)],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(
@@ -177,7 +187,8 @@ class _TopUpPageState extends State<TopUpPage> {
                 child: TextField(
                   controller: _amountController,
                   keyboardType: const TextInputType.numberWithOptions(
-                      decimal: false),
+                    decimal: false,
+                  ),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 26,
@@ -282,9 +293,7 @@ class _TopUpPageState extends State<TopUpPage> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isSelected
-                      ? const Color(0xFFF6339A)
-                      : Colors.white54,
+                  color: isSelected ? const Color(0xFFF6339A) : Colors.white54,
                   width: 2,
                 ),
               ),
@@ -307,15 +316,46 @@ class _TopUpPageState extends State<TopUpPage> {
     );
   }
 
-
-
   Widget _buildSubmitButton() {
     return SizedBox(
       width: double.infinity,
       height: 55,
       child: ElevatedButton(
-        onPressed: () {
+        onPressed: () async {
+          double jumlah = double.tryParse(_amountController.text) ?? 0;
+          if (jumlah <= 0) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Masukkan jumlah yang valid")),
+            );
+            return;
+          }
 
+          String metode = _selectedSource == TopUpSource.debitCard
+              ? "Kartu Debit"
+              : "Eksternal Wallet";
+
+          // Panggil TopupController
+          String? result = await _topupCtrl.topUp(
+            pengguna: currentUser,
+            jumlah: jumlah,
+            metode: metode,
+          );
+
+          if (result != null) {
+            // error
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(result)));
+          } else {
+            // sukses
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("Topup berhasil! Saldo: Rp ${currentUser.saldo}"),
+              ),
+            );
+            _amountController.clear();
+            setState(() {}); // refresh UI jika ada tampilan saldo
+          }
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFFAC00FF),

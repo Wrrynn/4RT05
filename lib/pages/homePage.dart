@@ -297,7 +297,7 @@ Widget buildProfileCard() {
             icon: 'assets/icons/topup.png',
             label: 'Top Up',
             onTap: () {
-              Navigator.pushNamed(context, '/topup');
+              Navigator.pushNamed(context, '/topup', arguments: widget.pengguna);
             },
           ),
           buildFeatureButton(
