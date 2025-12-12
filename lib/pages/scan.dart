@@ -47,7 +47,9 @@ class ScanQrPage extends StatelessWidget {
                 Icons.arrow_back_ios_new_rounded,
                 color: Colors.white,
               ),
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                Navigator.pushReplacementNamed(context, '/home');
+              },
             ),
             centerTitle: true,
             title: const Text(

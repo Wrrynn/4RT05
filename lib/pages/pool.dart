@@ -23,7 +23,9 @@ class _PoolPageState extends State<PoolPage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded,
               color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            Navigator.pushReplacementNamed(context, '/home');
+          },
         ),
         centerTitle: true,
         title: const Text(
@@ -472,6 +474,7 @@ class _PoolPageState extends State<PoolPage> {
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFF4EC7),
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -521,6 +524,7 @@ class _PoolPageState extends State<PoolPage> {
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF7C3CFF),
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -563,6 +567,7 @@ class _PoolPageState extends State<PoolPage> {
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF7C3CFF),
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -605,6 +610,7 @@ class _PoolPageState extends State<PoolPage> {
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF7C3CFF),
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -653,12 +659,18 @@ class _PoolPageState extends State<PoolPage> {
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF7C3CFF),
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
                   onPressed: () => Navigator.pop(context),
-                  child: const Text("Buat Grup"),
+                  child: const Text(
+                    "Buat Grup",
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -742,7 +754,7 @@ class _PoolPageState extends State<PoolPage> {
                 Text(
                   id,
                   style: const TextStyle(
-                    color: Colors.white60,
+                    color: Color.fromARGB(255, 255, 255, 255),
                     fontSize: 11,
                   ),
                 ),

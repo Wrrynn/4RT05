@@ -19,7 +19,7 @@ class HistoryPage extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_ios_new_rounded,
               color: Colors.white),
           onPressed: () {
-            Navigator.pop(context);
+            Navigator.pushReplacementNamed(context, '/home');
           },
         ),
         centerTitle: true,
