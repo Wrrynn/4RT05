@@ -5,6 +5,9 @@ import 'package:artos/pages/topup.dart';
 import 'package:artos/pages/send.dart';
 import 'package:artos/pages/payment.dart';
 import 'package:artos/pages/scan.dart';
+import 'package:artos/pages/moneyManagement.dart';
+import 'package:artos/pages/moneyReport.dart';
+
 
 
 
@@ -30,7 +33,9 @@ class MyApp extends StatelessWidget {
         '/topup': (context) => const TopUpPage(),
         '/send' : (context) => const SendMoneyPage(),
         '/payment': (context) => const PaymentPage(),
-        '/scan': (context) => const ScanQrPage()
+        '/scan': (context) => const ScanQrPage(),
+        '/moneyManagement': (context) => const ManajemenKeuanganPage(),
+        '/moneyReport': (context) => const LaporanKeuanganPage(),
       },
     );
   }

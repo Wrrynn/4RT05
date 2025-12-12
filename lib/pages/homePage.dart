@@ -379,15 +379,18 @@ Widget buildFiturAplikasi() {
       const SizedBox(height: 16),
 
       fiturButton(
-        text: "Manajemen Aplikasi", 
+        text: "Manajemen Uang", 
         iconPath: 'assets/icons/management.png',
         onTap: (){
-          Navigator.pushNamed(context, '/login');
+          Navigator.pushNamed(context, '/moneyManagement');
         }),
       
       fiturButton(
         text: "Laporan Keuangan", 
-        iconPath: 'assets/icons/management.png')
+        iconPath: 'assets/icons/management.png', 
+        onTap: (){
+          Navigator.pushNamed(context, '/moneyReport');
+        }),
     ],
   );
 }
