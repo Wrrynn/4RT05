@@ -1,3 +1,4 @@
+import 'package:artos/pages/history.dart';
 import 'package:artos/pages/homePage.dart';
 import 'package:artos/pages/login.dart';
 import 'package:flutter/material.dart';
@@ -7,7 +8,7 @@ import 'package:artos/pages/payment.dart';
 import 'package:artos/pages/scan.dart';
 import 'package:artos/pages/moneyManagement.dart';
 import 'package:artos/pages/moneyReport.dart';
-
+import 'package:artos/pages/pool.dart';
 
 
 
@@ -36,6 +37,8 @@ class MyApp extends StatelessWidget {
         '/scan': (context) => const ScanQrPage(),
         '/moneyManagement': (context) => const ManajemenKeuanganPage(),
         '/moneyReport': (context) => const LaporanKeuanganPage(),
+        '/history': (context) => const HistoryPage(),
+        '/pool' : (context) => const PoolPage(),
       },
     );
   }
