@@ -134,6 +134,8 @@ class _SendMoneyPageState extends State<SendMoneyPage> {
         ],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Align(
+        alignment: Alignment.centerLeft, 
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
@@ -157,6 +159,7 @@ class _SendMoneyPageState extends State<SendMoneyPage> {
           ),
         ],
       ),
+      ) 
     );
   }
 

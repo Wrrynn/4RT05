@@ -108,6 +108,8 @@ class _TopUpPageState extends State<TopUpPage> {
         ],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Align(
+        alignment: Alignment.centerLeft, // ✅ paksa konten ke kiri
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
@@ -131,6 +133,8 @@ class _TopUpPageState extends State<TopUpPage> {
           ),
         ],
       ),
+      )
+      
     );
   }
 

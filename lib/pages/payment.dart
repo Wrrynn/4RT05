@@ -119,20 +119,22 @@ class _PaymentPageState extends State<PaymentPage> {
 
   // ---------------- KARTU SALDO ----------------
 
-  Widget _buildCurrentBalanceCard() {
-    return GlassContainer(
-      width: double.infinity,
-      height: 90,
-      borderRadius: BorderRadius.circular(18),
-      gradient: const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          Color(0xFFAC00FF),
-          Color(0xFF3C00FF),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+Widget _buildCurrentBalanceCard() {
+  return GlassContainer(
+    width: double.infinity,
+    height: 90,
+    borderRadius: BorderRadius.circular(18),
+    gradient: const LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        Color(0xFFAC00FF),
+        Color(0xFF3C00FF),
+      ],
+    ),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    child: Align(
+      alignment: Alignment.centerLeft,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
@@ -156,8 +158,10 @@ class _PaymentPageState extends State<PaymentPage> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   // ---------------- FIELD VA ----------------
 
