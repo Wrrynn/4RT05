@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:artos/controller/regisCtrl.dart';
 import 'package:artos/widgets/glass.dart';
 import 'login.dart';
 
@@ -12,6 +13,11 @@ class Register extends StatefulWidget {
 class _RegisterState extends State<Register> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  final TextEditingController fullNameCtrl = TextEditingController();
+  final TextEditingController emailCtrl = TextEditingController();
+  final TextEditingController phoneCtrl = TextEditingController();
+  final TextEditingController passCtrl = TextEditingController();
+  final TextEditingController confirmCtrl = TextEditingController();
 
   Widget buildRegisterButton(VoidCallback onPressed) {
     return SizedBox(
@@ -65,8 +71,10 @@ class _RegisterState extends State<Register> {
                 width: double.infinity,
                 height: 600,
                 borderRadius: BorderRadius.circular(25),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 32,
+                ),
                 margin: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -84,9 +92,10 @@ class _RegisterState extends State<Register> {
                     const SizedBox(height: 25),
 
                     // 🔹 Full Name
-                    const TextField(
-                      style: TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
+                    TextField(
+                      controller: fullNameCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
                         labelText: 'Full Name',
                         labelStyle: TextStyle(color: Colors.white70),
                         enabledBorder: OutlineInputBorder(
@@ -102,9 +111,10 @@ class _RegisterState extends State<Register> {
                     const SizedBox(height: 16),
 
                     // 🔹 Email
-                    const TextField(
-                      style: TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
+                    TextField(
+                      controller: emailCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
                         labelText: 'Email',
                         labelStyle: TextStyle(color: Colors.white70),
                         enabledBorder: OutlineInputBorder(
@@ -119,11 +129,12 @@ class _RegisterState extends State<Register> {
                     ),
                     const SizedBox(height: 16),
 
-                     // 🔹 Phone Number
+                    // 🔹 Phone Number
                     TextField(
+                      controller: phoneCtrl,
                       keyboardType: TextInputType.phone,
-                      style: TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
                         labelText: 'Phone Number',
                         labelStyle: TextStyle(color: Colors.white70),
                         enabledBorder: OutlineInputBorder(
@@ -136,10 +147,11 @@ class _RegisterState extends State<Register> {
                         ),
                       ),
                     ),
-                    const SizedBox(height:16),
+                    const SizedBox(height: 16),
 
                     // 🔹 Password
                     TextField(
+                      controller: passCtrl,
                       obscureText: _obscurePassword,
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
@@ -172,6 +184,7 @@ class _RegisterState extends State<Register> {
 
                     // 🔹 Confirm Password
                     TextField(
+                      controller: confirmCtrl,
                       obscureText: _obscureConfirmPassword,
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
@@ -202,24 +215,51 @@ class _RegisterState extends State<Register> {
                       ),
                     ),
                     const SizedBox(height: 30),
-                    
-                    // 🔹 Tombol Register
-                    buildRegisterButton(() {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Account created successfully!'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
 
-                      Future.delayed(const Duration(seconds: 1), () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const Login(),
+                    // 🔹 Tombol Register
+                    buildRegisterButton(() async {
+                      if (passCtrl.text != confirmCtrl.text) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Password tidak cocok!"),
+                            backgroundColor: Colors.red,
                           ),
                         );
-                      });
+                        return;
+                      }
+
+                      final controller = RegisController();
+                      final error = await controller.registerUser(
+                        fullName: fullNameCtrl.text,
+                        email: emailCtrl.text,
+                        password: passCtrl.text,
+                        telepon: phoneCtrl.text,
+                      );
+
+                      if (error == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Registrasi berhasil!"),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+
+                        Future.delayed(const Duration(seconds: 1), () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const Login(),
+                            ),
+                          );
+                        });
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(error),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
                     }),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -232,7 +272,9 @@ class _RegisterState extends State<Register> {
                           onTap: () {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => const Login()),
+                              MaterialPageRoute(
+                                builder: (context) => const Login(),
+                              ),
                             );
                           },
                           child: const Text(
