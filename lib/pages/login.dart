@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:artos/widgets/glass.dart';
 import 'package:artos/pages/register.dart';
 import 'package:artos/pages/homePage.dart';
+import 'package:artos/controller/loginCtrl.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -12,6 +13,9 @@ class Login extends StatefulWidget {
 
 class _LoginState extends State<Login> {
   bool _obscurePassword = true;
+  final _emailCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
+  final _loginCtrl = LoginController();
 
   Widget buildLoginButton(VoidCallback onPressed) {
     return SizedBox(
@@ -86,9 +90,10 @@ class _LoginState extends State<Login> {
                     const SizedBox(height: 30),
 
                     // 🔹 Input Email
-                    const TextField(
-                      style: TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
+                    TextField(
+                      controller: _emailCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
                         labelText: 'Email',
                         labelStyle: TextStyle(color: Colors.white70),
                         enabledBorder: OutlineInputBorder(
@@ -107,6 +112,7 @@ class _LoginState extends State<Login> {
 
                     // 🔹 Input Password
                     TextField(
+                      controller: _passCtrl,
                       obscureText: _obscurePassword,
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
@@ -165,12 +171,24 @@ class _LoginState extends State<Login> {
                     const SizedBox(height: 30),
 
                     // 🔹 Tombol Login
-                    buildLoginButton(() {
+                    buildLoginButton(() async {
+                      final errorMessage = await _loginCtrl.login(
+                        _emailCtrl.text,
+                        _passCtrl.text,
+                      );
+
+                      if (errorMessage != null) {
+                        // pesan error ke user
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text(errorMessage)));
+                        return;
+                      }
+
+                      // Login sukses
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => const Homepage(),
-                        ),
+                        MaterialPageRoute(builder: (_) => const Homepage()),
                       );
                     }),
 

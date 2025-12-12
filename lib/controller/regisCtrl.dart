@@ -10,39 +10,49 @@ class RegisController {
     required String password,
     required String telepon,
   }) async {
-    try {
-      // Cek email apakah sudah ada
-      final existingUser = await supabase
-          .from('Pengguna')
-          .select()
-          .eq('email', email)
-          .maybeSingle();
 
-      if (existingUser != null) {
-        return "Email sudah terdaftar!";
+    // VALIDASI PASSWORD MINIMAL 6
+    if (password.length < 6) {
+      return "Password harus minimal 6 karakter!";
+    }
+
+    try {
+      //Sign Up Supabase Auth
+      final authResponse = await supabase.auth.signUp(
+        email: email,
+        password: password,
+      );
+
+      final user = authResponse.user;
+
+      if (user == null) {
+        return "Gagal membuat akun auth.";
       }
 
-      // 🔥 2. Insert user baru
+      // UID auth user
+      final uid = user.id;
+
+      // Masukkan ke tabel Pengguna (wajib punya kolom 'id')
       final insertResponse = await supabase.from('Pengguna').insert({
+        'id_pengguna': uid,              
         'nama_lengkap': fullName,
         'email': email,
-        'password': password, // sebaiknya di-hash nanti
+        'password':password,
         'telepon': telepon,
         'saldo': 0,
-      }).select(); // penting agar Supabase v2 tidak error
+      }).select();
 
-      // Jika berhasil
-      if (insertResponse.isNotEmpty) {
-        return null;
-      } else {
-        return "Gagal menambahkan pengguna.";
+      if (insertResponse.isEmpty) {
+        return "Gagal memasukkan data pengguna.";
       }
 
+      return null; // sukses
+
+    } on AuthException catch (e) {
+      return "Auth error: ${e.message}";
     } on PostgrestException catch (e) {
-      // Error berasal dari Supabase
       return "Database error: ${e.message}";
     } catch (e) {
-      // Error umum (koneksi, null, dll)
       return "Kesalahan tak terduga: $e";
     }
   }
