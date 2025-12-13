@@ -45,7 +45,7 @@ class _HomepageState extends State<Homepage> {
   Widget _buildPage(int index) {
     if (index == 0) return buildMainContent();
     if (index == 1) return PoolPage();
-    if (index == 2) return ScanQrPage();
+    if (index == 2) return ScanPage();
     if (index == 3) return HistoryPage();
 
     return Container(); // default fallback

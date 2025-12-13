@@ -34,7 +34,7 @@ class MyApp extends StatelessWidget {
         '/topup': (context) => const TopUpPage(),
         '/send' : (context) => const SendMoneyPage(),
         '/payment': (context) => const PaymentPage(),
-        '/scan': (context) => const ScanQrPage(),
+        '/scan': (context) => const ScanPage(),
         '/moneyManagement': (context) => const ManajemenKeuanganPage(),
         '/moneyReport': (context) => const LaporanKeuanganPage(),
         '/history': (context) => const HistoryPage(),
