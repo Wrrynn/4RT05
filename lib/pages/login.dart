@@ -16,6 +16,8 @@ class _LoginState extends State<Login> {
   bool _obscurePassword = true;
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -29,17 +31,26 @@ class _LoginState extends State<Login> {
       width: double.infinity,
       height: 50,
       child: ElevatedButton(
-        onPressed: onPressed,
+        onPressed: _isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color.fromARGB(255, 183, 41, 171),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
         ),
-        child: const Text(
-          'Login',
-          style: TextStyle(fontSize: 18, color: Colors.white),
-        ),
+        child: _isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : const Text(
+                'Login',
+                style: TextStyle(fontSize: 18, color: Colors.white),
+              ),
       ),
     );
   }
@@ -70,9 +81,11 @@ class _LoginState extends State<Login> {
         ),
         child: SafeArea(
           child: Center(
-            child: SingleChildScrollView(
+              child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
-              child: GlassContainer(
+              child: Form(
+                key: _formKey,
+                child: GlassContainer(
                 width: double.infinity,
                 height: 480,
                 borderRadius: BorderRadius.circular(25),
@@ -97,8 +110,9 @@ class _LoginState extends State<Login> {
                     const SizedBox(height: 30),
 
                     // 🔹 Input Email
-                    TextField(
+                    TextFormField(
                       controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
                       style: const TextStyle(color: Colors.white),
                       decoration: const InputDecoration(
                         labelText: 'Email',
@@ -114,11 +128,18 @@ class _LoginState extends State<Login> {
                           ),
                         ),
                       ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Email is required';
+                        final email = v.trim();
+                        final emailRegex = RegExp(r"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+                        if (!emailRegex.hasMatch(email)) return 'Enter a valid email';
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
 
                     // 🔹 Input Password
-                    TextField(
+                    TextFormField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
                       style: const TextStyle(color: Colors.white),
@@ -149,6 +170,11 @@ class _LoginState extends State<Login> {
                           },
                         ),
                       ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Password is required';
+                        if (v.length < 6) return 'Password must be at least 6 characters';
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 12),
 
@@ -179,13 +205,25 @@ class _LoginState extends State<Login> {
 
                     // 🔹 Tombol Login
                     buildLoginButton(() async {
+                      if (!_formKey.currentState!.validate()) return;
                       final email = _emailController.text.trim();
                       final password = _passwordController.text;
+
+                      setState(() {
+                        _isLoading = true;
+                      });
+
                       final err = await AuthService.signIn(email, password);
+
+                      setState(() {
+                        _isLoading = false;
+                      });
+
                       if (err != null) {
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
                         return;
                       }
+
                       // print current user for debug to verify data sent to Supabase
                       AuthService.debugPrintCurrentUser();
                       Navigator.pushReplacement(
