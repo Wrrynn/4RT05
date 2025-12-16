@@ -3,6 +3,7 @@ class Pengguna {
   String namaLengkap;
   final String email;
   final String password;
+  String? rekening;
   String telepon;
   double saldo;
 
@@ -12,7 +13,8 @@ class Pengguna {
     required this.email,
     required this.password,
     required this.telepon,
-    this.saldo = 0.0,
+    this.rekening,
+    this.saldo = 0,
   });
 
   // Convert model → JSON (untuk insert Supabase)
@@ -35,6 +37,7 @@ class Pengguna {
       email: json['email'],
       password: json['password'],
       telepon: json['telepon'],
+      rekening: json['rekening'],
       saldo: (json['saldo'] as num).toDouble(),
     );
   }

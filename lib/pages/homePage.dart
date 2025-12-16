@@ -100,10 +100,8 @@ class _HomepageState extends State<Homepage> {
       ],
     );
   }
+
   // ================== RIWAYAT TRANSAKSI ==================
-
-  
-
   Widget _buildSearchBar() {
     return GlassContainer(
       width: double.infinity,
@@ -133,7 +131,6 @@ class _HomepageState extends State<Homepage> {
       ),
     );
   }
-
 
   Widget buildAksesAplikasi(BuildContext context) {
   return Column(
@@ -308,7 +305,7 @@ class _HomepageState extends State<Homepage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                   Text(
+                    Text(
                       widget.pengguna.namaLengkap,
                       style: const TextStyle(
                       color: Colors.white,
@@ -320,7 +317,7 @@ class _HomepageState extends State<Homepage> {
                     Row(
                       children: [
                         Text(
-                          "ID ${widget.pengguna.idPengguna}",
+                          "ID ${widget.pengguna.rekening}",
                           style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 14,
