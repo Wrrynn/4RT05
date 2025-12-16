@@ -1,25 +1,27 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart'; // Wajib: flutter pub add url_launcher
 import 'package:artos/widgets/bgPurple.dart';
 import 'package:artos/widgets/glass.dart';
 import 'package:artos/controller/topUpCtrl.dart';
 import 'package:artos/model/pengguna.dart';
-
-enum TopUpSource { debitCard, externalWallet }
+import 'package:artos/model/topup.dart';
 
 class TopUpPage extends StatefulWidget {
   const TopUpPage({super.key});
-
   @override
   State<TopUpPage> createState() => _TopUpPageState();
 }
 
 class _TopUpPageState extends State<TopUpPage> {
+  int step = 1;
+  String selectedCategory = ""; // 'bank', 'qris', 'cash'
+  String selectedLabel = "";
+  bool _isLoading = false;
+  
   final TextEditingController _amountController = TextEditingController();
-  TopUpSource _selectedSource = TopUpSource.debitCard;
-
-  late Pengguna currentUser;
   final TopupController _topupCtrl = TopupController();
+  late Pengguna currentUser;
+  Topup? pendingTopup;
 
   @override
   void didChangeDependencies() {
@@ -27,354 +29,338 @@ class _TopUpPageState extends State<TopUpPage> {
     currentUser = ModalRoute.of(context)!.settings.arguments as Pengguna;
   }
 
-  @override
-  void dispose() {
-    _amountController.dispose();
-    super.dispose();
+  void _msg(String m) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m), duration: const Duration(seconds: 2)));
+  }
+
+  // Fungsi membuka link Midtrans
+  Future<void> _launchMidtrans(String? url) async {
+    if (url != null) {
+      final Uri uri = Uri.parse(url);
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        _msg("Tidak bisa membuka link pembayaran");
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: true,
-      extendBodyBehindAppBar: true,
-      appBar: _buildAppBar(context),
       body: BackgroundApp(
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-            child: Column(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildCurrentBalanceCard(),
-                        const SizedBox(height: 24),
-                        _buildAmountInput(),
-                        const SizedBox(height: 24),
-                        _buildSourceTitle(),
-                        const SizedBox(height: 12),
-                        _buildSourceSelector(),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Tombol Tambah Dana di bawah
-                const SizedBox(height: 8),
-                _buildSubmitButton(),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return PreferredSize(
-      preferredSize: const Size.fromHeight(kToolbarHeight),
-      child: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-          child: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            centerTitle: true,
-            title: const Text(
-              'Top Up',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            leading: IconButton(
-              icon: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Colors.white,
-              ),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ================== WIDGET BAGIAN ATAS ==================
-
-  Widget _buildCurrentBalanceCard() {
-    return GlassContainer(
-      width: double.infinity,
-      height: 90,
-      borderRadius: BorderRadius.circular(18),
-      gradient: const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color(0xFFAC00FF), Color(0xFF3C00FF)],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Align(
-        alignment: Alignment.centerLeft, // ✅ paksa konten ke kiri
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          Text(
-            "Dana Saat Ini",
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          SizedBox(height: 6),
-          Text(
-            "Rp. 000000000",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-      )
-      
-    );
-  }
-
-  Widget _buildAmountInput() {
-    return GlassContainer(
-      width: double.infinity,
-      height: 130,
-      borderRadius: BorderRadius.circular(18),
-      gradient: LinearGradient(
-        colors: [
-          Colors.black.withOpacity(0.25),
-          Colors.black.withOpacity(0.10),
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      borderColor: Colors.white.withOpacity(0.15),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Masukkan Jumlah",
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+          child: Column(
             children: [
-              const Text(
-                "Rp",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(width: 10),
+              _buildHeader(),
               Expanded(
-                child: TextField(
-                  controller: _amountController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: false,
-                  ),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  cursorColor: Colors.white,
-                  decoration: const InputDecoration(
-                    isCollapsed: true,
-                    border: InputBorder.none,
-                    hintText: "0.00",
-                    hintStyle: TextStyle(
-                      color: Colors.white38,
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400),
+                  child: _buildBody(),
                 ),
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildSourceTitle() {
-    return const Text(
-      "Asal Dana",
-      style: TextStyle(
-        color: Colors.white,
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-      ),
-    );
+  Widget _buildBody() {
+    if (step == 1) return _stepSelectMethod();
+    if (step == 2) return _stepInputAmount();
+    return _stepPaymentProcess();
   }
 
-  Widget _buildSourceSelector() {
-    return Column(
+  // --- 1. PILIH METODE (3 Opsi) ---
+  Widget _stepSelectMethod() {
+    return ListView(
+      key: const ValueKey(1),
+      padding: const EdgeInsets.all(24),
       children: [
-        _sourceItem(
-          label: "Kartu Debit",
-          isSelected: _selectedSource == TopUpSource.debitCard,
-          onTap: () {
-            setState(() => _selectedSource = TopUpSource.debitCard);
-          },
-        ),
+        const Text("Metode Top Up", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 20),
+        
+        _optionCard("Transfer Bank", "Virtual Account (BCA, BNI, dll)", Icons.account_balance, "bank"),
         const SizedBox(height: 12),
-        _sourceItem(
-          label: "Eksternal Wallet",
-          isSelected: _selectedSource == TopUpSource.externalWallet,
-          onTap: () {
-            setState(() => _selectedSource = TopUpSource.externalWallet);
-          },
-        ),
+        _optionCard("QRIS", "Scan QR Code (Gopay/ShopeePay)", Icons.qr_code_2, "qris"),
+        const SizedBox(height: 12),
+        _optionCard("Tunai / Cash", "Indomaret / Alfamart", Icons.storefront, "cash"),
       ],
     );
   }
 
-  Widget _sourceItem({
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
+  Widget _optionCard(String title, String subtitle, IconData icon, String category) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () => setState(() { selectedCategory = category; selectedLabel = title; step = 2; }),
       child: GlassContainer(
         width: double.infinity,
-        height: 75,
-        borderRadius: BorderRadius.circular(18),
-        padding: const EdgeInsets.symmetric(horizontal: 18),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isSelected
-              ? [
-                  const Color(0xFFAC00FF).withOpacity(0.35),
-                  const Color(0xFF3C00FF).withOpacity(0.35),
-                ]
-              : [
-                  Colors.black.withOpacity(0.25),
-                  Colors.black.withOpacity(0.10),
-                ],
-        ),
-        borderColor: isSelected
-            ? const Color(0xFFF6339A)
-            : Colors.white.withOpacity(0.2),
+        // height dihapus agar dinamis
+        padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
             Container(
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? const Color(0xFFF6339A) : Colors.white54,
-                  width: 2,
-                ),
-              ),
-              child: Center(
-                child: Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isSelected
-                        ? const Color(0xFFF6339A)
-                        : Colors.transparent,
-                  ),
-                ),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), shape: BoxShape.circle),
+              child: Icon(icon, color: Colors.white),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text(subtitle, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                ],
               ),
             ),
+            const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSubmitButton() {
+  // --- 2. INPUT NOMINAL ---
+  // Daftar nominal cepat yang diminta
+  final List<int> _quickAmounts = [25000, 50000, 100000, 200000, 250000, 500000];
+
+  Widget _stepInputAmount() {
+    return Padding(
+      key: const ValueKey(2),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          // 1. INPUT FIELD (Desain yang sudah disepakati)
+          GlassContainer(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Masukkan Jumlah",
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    const Text(
+                      "Rp ",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 36,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Expanded(
+                      child: TextField(
+                        controller: _amountController,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          hintText: "0",
+                          hintStyle: TextStyle(
+                            color: Colors.white30,
+                            fontSize: 36,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 24),
+
+          // 2. OPSI INSTAN (Quick Action Buttons)
+          Align(
+            alignment: Alignment.centerLeft,
+          ),
+          const SizedBox(height: 12),
+          
+          Wrap(
+            spacing: 12, // Jarak horizontal antar tombol
+            runSpacing: 12, // Jarak vertikal antar baris
+            children: _quickAmounts.map((amount) {
+              return _buildQuickAmountButton(amount);
+            }).toList(),
+          ),
+
+          const Spacer(),
+
+          // 3. TOMBOL LANJUT
+          _actionButton("Lanjut Pembayaran", () async {
+            // Bersihkan format titik/koma sebelum parsing
+            String cleanText = _amountController.text.replaceAll('.', '').replaceAll(',', '');
+            double amt = double.tryParse(cleanText) ?? 0;
+            
+            if (amt < 10000) { 
+              _msg("Minimal Top Up Rp 10.000"); 
+              return; 
+            }
+
+            setState(() => _isLoading = true);
+            
+            var res = await _topupCtrl.createTransaction(
+              userId: currentUser.idPengguna.toString(),
+              jumlah: amt,
+              category: selectedCategory,
+              detailName: selectedLabel,
+            );
+
+            setState(() => _isLoading = false);
+
+            if (res != null) {
+              setState(() { pendingTopup = res; step = 3; });
+              _launchMidtrans(res.redirectUrl);
+            } else {
+              _msg("Gagal membuat transaksi. Cek koneksi / Server Key.");
+            }
+          }),
+        ],
+      ),
+    );
+  }
+
+  // Widget Helper untuk Tombol Nominal Kecil
+  Widget _buildQuickAmountButton(int amount) {
+    // Format angka sederhana (contoh: 25000 -> 25.000)
+    String formatted = amount.toString().replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.');
+
+    return InkWell(
+      onTap: () {
+        // Saat diklik, isi controller dengan angka yang sudah diformat
+        setState(() {
+          _amountController.text = formatted; // Input otomatis terisi
+        });
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: GlassContainer(
+        width: 100, // Lebar tombol fix agar rapi
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        borderRadius: BorderRadius.circular(12),
+        borderColor: Colors.white.withOpacity(0.1),
+        child: Center(
+          child: Text(
+            formatted,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- 3. PROSES PEMBAYARAN (Check Status) ---
+  Widget _stepPaymentProcess() {
+    return Padding(
+      key: const ValueKey(3),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.timer_outlined, size: 80, color: Colors.cyanAccent),
+          const SizedBox(height: 20),
+          const Text("Menunggu Pembayaran", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          const Text("Silahkan selesaikan pembayaran di halaman Midtrans yang terbuka.", 
+            textAlign: TextAlign.center, style: TextStyle(color: Colors.white70)),
+          const SizedBox(height: 40),
+          
+          _actionButton("Buka Halaman Pembayaran Lagi", () {
+            _launchMidtrans(pendingTopup?.redirectUrl);
+          }, color: Colors.blueAccent),
+          
+          const SizedBox(height: 16),
+          
+          _actionButton("Cek Status & Refresh Saldo", () async {
+            setState(() => _isLoading = true);
+            String status = await _topupCtrl.checkTransactionStatus(
+              pendingTopup!.orderId!, 
+              currentUser.idPengguna.toString(), 
+              pendingTopup!.jumlah
+            );
+            setState(() => _isLoading = false);
+
+            if (status == "success") {
+              _showSuccessDialog();
+            } else if (status == "pending") {
+              _msg("Pembayaran belum terdeteksi. Silahkan bayar dulu.");
+            } else {
+              _msg("Status: $status");
+            }
+          }, color: const Color(0xFFAC00FF)),
+        ],
+      ),
+    );
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        title: const Text("Berhasil!", style: TextStyle(color: Colors.white)),
+        content: Text("Saldo Rp ${pendingTopup?.jumlah} telah masuk.", style: const TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Tutup Dialog
+              Navigator.pop(context, true); // Kembali ke Home
+            },
+            child: const Text("OK", style: TextStyle(color: Colors.cyanAccent)),
+          )
+        ],
+      )
+    );
+  }
+
+  Widget _actionButton(String text, VoidCallback onTap, {Color? color}) {
     return SizedBox(
       width: double.infinity,
       height: 55,
       child: ElevatedButton(
-        onPressed: () async {
-          double jumlah = double.tryParse(_amountController.text) ?? 0;
-          if (jumlah <= 0) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Masukkan jumlah yang valid")),
-            );
-            return;
-          }
-
-          String metode = _selectedSource == TopUpSource.debitCard
-              ? "Kartu Debit"
-              : "Eksternal Wallet";
-
-          // Panggil TopupController
-          String? result = await _topupCtrl.topUp(
-            pengguna: currentUser,
-            jumlah: jumlah,
-            metode: metode,
-          );
-
-          if (result != null) {
-            // error
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(result)));
-          } else {
-            // sukses
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text("Topup berhasil! Saldo: Rp ${currentUser.saldo}"),
-              ),
-            );
-            _amountController.clear();
-            setState(() {}); // refresh UI jika ada tampilan saldo
-          }
-        },
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFAC00FF),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+          backgroundColor: color ?? const Color(0xFFAC00FF),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
-        child: const Text(
-          "Tambah Dana",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
+        onPressed: _isLoading ? null : onTap,
+        child: _isLoading 
+          ? const CircularProgressIndicator(color: Colors.white) 
+          : Text(text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+            onPressed: () => step > 1 ? setState(() => step--) : Navigator.pop(context),
           ),
-        ),
+          const Text("Top Up", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        ],
       ),
     );
   }
