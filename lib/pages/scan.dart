@@ -55,11 +55,11 @@ class _ScanPageState extends State<ScanPage> {
                       children: [
                         GestureDetector(
                           onTap: () => Navigator.of(context).maybePop(),
-                          child: const Icon(Icons.arrow_back, color: Colors.white),
+                          child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
                         ),
                         const SizedBox(width: 16),
                         const Expanded(
-                          child: Text('Scan QR Code', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w600)),
+                          child: Text('Scan QR Code', style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w600)),
                         ),
                         IconButton(
                           onPressed: () {},

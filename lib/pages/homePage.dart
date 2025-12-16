@@ -27,7 +27,7 @@ class _HomepageState extends State<Homepage> {
     return Scaffold(
       extendBody: true,
       extendBodyBehindAppBar: true,
-      appBar: buildAppBar(),
+      appBar: _pageIndex == 0 ? buildAppBar() : null,
       body: BackgroundApp(
         child: SafeArea(
           child: _buildPage(_pageIndex), 

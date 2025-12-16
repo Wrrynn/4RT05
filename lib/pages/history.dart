@@ -100,6 +100,7 @@ class HistoryPage extends StatelessWidget {
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
+                fontSize: 26,
               ),
             ),
             actions: const [
