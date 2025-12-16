@@ -10,9 +10,11 @@ import 'package:artos/pages/scan.dart';
 
 // import 'package:artos/widgets/fireflies.dart';
 // import 'package:artos/widgets/plasma.dart';
+import 'package:artos/model/pengguna.dart';
 
 class Homepage extends StatefulWidget {
-  const Homepage({super.key});
+  final Pengguna pengguna;
+  const Homepage({super.key, required this.pengguna});
 
   @override
   State<Homepage> createState() => _HomepageState();
@@ -129,6 +131,57 @@ class _HomepageState extends State<Homepage> {
           ),
         ],
       ),
+    );
+  }
+
+
+  Widget buildAksesAplikasi(BuildContext context) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text(
+        "Akses Cepat",
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      const SizedBox(height: 16),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          buildFeatureButton(
+            icon: 'assets/icons/topup.png',
+            label: 'Top Up',
+            onTap: () {
+              Navigator.pushNamed(context, '/topup', arguments: widget.pengguna);
+            },
+          ),
+          buildFeatureButton(
+            icon: 'assets/icons/sendmoney.png',
+            label: 'Kirim Uang',
+            onTap: () {
+              Navigator.pushNamed(context, '/send');
+            },
+          ),
+          buildFeatureButton(
+            icon: 'assets/icons/payment.png',
+            label: 'Bayar',
+            onTap: () {
+              Navigator.pushNamed(context, '/payment');
+            },
+          ),
+          buildFeatureButton(
+            icon: 'assets/icons/qrcode.png',
+            label: 'Scan',
+            onTap: () {
+              Navigator.pushNamed(context, '/scan');
+            },
+          ),
+        ],
+      ),
+    ],
     );
   }
 
@@ -385,55 +438,6 @@ class _HomepageState extends State<Homepage> {
     );
   }
 
-  Widget buildAksesAplikasi(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Akses Cepat",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            buildFeatureButton(
-              icon: 'assets/icons/topup.png',
-              label: 'Top Up',
-              onTap: () {
-                Navigator.pushNamed(context, '/topup');
-              },
-            ),
-            buildFeatureButton(
-              icon: 'assets/icons/sendmoney.png',
-              label: 'Kirim Uang',
-              onTap: () {
-                Navigator.pushNamed(context, '/send');
-              },
-            ),
-            buildFeatureButton(
-              icon: 'assets/icons/payment.png',
-              label: 'Bayar',
-              onTap: () {
-                Navigator.pushNamed(context, '/payment');
-              },
-            ),
-            buildFeatureButton(
-              icon: 'assets/icons/qrcode.png',
-              label: 'Scan',
-              onTap: () {
-                Navigator.pushNamed(context, '/scan');
-              },
-            ),
-          ],
-        ),
-      ],
-    );
-  }
 
   Widget buildFeatureButton({
     required String icon,

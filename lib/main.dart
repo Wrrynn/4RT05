@@ -9,10 +9,17 @@ import 'package:artos/pages/scan.dart';
 import 'package:artos/pages/moneyManagement.dart';
 import 'package:artos/pages/moneyReport.dart';
 import 'package:artos/pages/pool.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Supabase.initialize(
+    url: 'https://xszsnzmwltkoyfxrobgn.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzenNuem13bHRrb3lmeHJvYmduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4ODkzNjQsImV4cCI6MjA3NzQ2NTM2NH0.m0Y9-Qs1DoNJdMf-TjSyQq8E5Z9RmkkXK_ycrPCtNt8',
+  );
   runApp(const MyApp());
 }
 
@@ -30,7 +37,7 @@ class MyApp extends StatelessWidget {
 
       routes: {
         '/login':(context) => const Login(),
-        '/home': (context) => const Homepage(),
+        //'/home': (context) => const Homepage(),
         '/topup': (context) => const TopUpPage(),
         '/send' : (context) => const SendMoneyPage(),
         '/payment': (context) => const PaymentPage(),
