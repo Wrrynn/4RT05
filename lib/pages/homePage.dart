@@ -308,20 +308,23 @@ class _HomepageState extends State<Homepage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      "Nama",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                   Text(
+                      widget.pengguna.namaLengkap,
+                      style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                     ),
                     const SizedBox(height: 4),
                     Row(
-                      children: const [
+                      children: [
                         Text(
-                          "ID xxxx",
-                          style: TextStyle(color: Colors.white70, fontSize: 14),
+                          "ID ${widget.pengguna.idPengguna}",
+                          style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
                         ),
                         SizedBox(width: 6),
                         Icon(
@@ -334,10 +337,10 @@ class _HomepageState extends State<Homepage> {
                     const SizedBox(height: 10),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
-                      children: const [
+                      children: [
                         Text(
-                          "Rp. 0000",
-                          style: TextStyle(
+                          "Rp. ${widget.pengguna.saldo}",
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 24,
                             fontWeight: FontWeight.w800,
@@ -377,7 +380,7 @@ class _HomepageState extends State<Homepage> {
                     children: [
                       Text(
                         "Pemasukan",
-                        style: TextStyle(
+                          style: TextStyle(
                           color: Colors.white,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -386,7 +389,7 @@ class _HomepageState extends State<Homepage> {
                       SizedBox(height: 4),
                       Text(
                         "Rp. 000",
-                        style: TextStyle(
+                          style: const TextStyle(
                           color: Colors.white,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
