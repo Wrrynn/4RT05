@@ -11,6 +11,8 @@ import 'package:artos/pages/scan.dart';
 // import 'package:artos/widgets/fireflies.dart';
 // import 'package:artos/widgets/plasma.dart';
 import 'package:artos/model/pengguna.dart';
+import 'package:artos/service/db_service.dart';
+import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 
 class Homepage extends StatefulWidget {
   final Pengguna pengguna;
@@ -22,6 +24,13 @@ class Homepage extends StatefulWidget {
 
 class _HomepageState extends State<Homepage> {
   int _pageIndex = 0;
+  late Pengguna _pengguna;
+  bool _refreshing = false;
+  @override
+  void initState() {
+    super.initState();
+    _pengguna = widget.pengguna;
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -29,8 +38,15 @@ class _HomepageState extends State<Homepage> {
       extendBodyBehindAppBar: true,
       appBar: _pageIndex == 0 ? buildAppBar() : null,
       body: BackgroundApp(
-        child: SafeArea(
-          child: _buildPage(_pageIndex), 
+        child: Column(
+          children: [
+            const SizedBox(height: 16),
+            Expanded(
+              child: SafeArea(
+                child: _buildPage(_pageIndex),
+              ),
+            ),
+          ],
         ),
       ),
       bottomNavigationBar: CustomNavBar(
@@ -68,6 +84,24 @@ class _HomepageState extends State<Homepage> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+                actions: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12.0),
+                    child: _refreshing
+                        ? const SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: CircularProgressIndicator(
+                              color: Color(0xFF5900FF),
+                              strokeWidth: 2.4,
+                            ),
+                          )
+                        : IconButton(
+                            onPressed: () => _refreshData(),
+                            icon: const Icon(Icons.refresh, color: Colors.white),
+                          ),
+                  ),
+                ],
             backgroundColor: Colors.transparent,
             elevation: 0,
             titleSpacing: 25,
@@ -77,23 +111,35 @@ class _HomepageState extends State<Homepage> {
       ),
     );
   }
-
   /// Konten utama
   Widget buildMainContent() {
     return Column(
       children: [
         Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                buildProfileCard(),
-                const SizedBox(height: 30),
-                buildAksesAplikasi(context),
-                const SizedBox(height: 30),
-                buildFiturAplikasi(),
-              ],
+          child: LiquidPullToRefresh(
+            showChildOpacityTransition: true,
+            springAnimationDurationInMilliseconds: 500,
+            color: const Color(0xFF5900FF),
+            backgroundColor: Colors.white12,
+            onRefresh: _refreshData,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 0),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+                transform: Matrix4.translationValues(0, _refreshing ? 40.0 : 0.0, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    buildProfileCard(),
+                    const SizedBox(height: 30),
+                    buildAksesAplikasi(context),
+                    const SizedBox(height: 30),
+                    buildFiturAplikasi(),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -132,6 +178,36 @@ class _HomepageState extends State<Homepage> {
     );
   }
 
+  Future<void> _refreshData() async {
+    // simple modern refresh: fetch latest Pengguna record and update UI
+    final currentId = DBService.client.auth.currentUser?.id ?? _pengguna.idPengguna;
+    try {
+      setState(() => _refreshing = true);
+      final res = await DBService.client
+          .from('Pengguna')
+          .select()
+          .eq('id_pengguna', currentId)
+          .maybeSingle();
+      if (res != null) {
+        final updated = Pengguna.fromJson(res as Map<String, dynamic>);
+        setState(() => _pengguna = updated);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Data berhasil diperbarui')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tidak dapat menemukan data pengguna')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal memperbarui: $e')),
+      );
+    } finally {
+      setState(() => _refreshing = false);
+    }
+  }
+
   Widget buildAksesAplikasi(BuildContext context) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -152,7 +228,7 @@ class _HomepageState extends State<Homepage> {
             icon: 'assets/icons/topup.png',
             label: 'Top Up',
             onTap: () {
-              Navigator.pushNamed(context, '/topup', arguments: widget.pengguna);
+              Navigator.pushNamed(context, '/topup', arguments: _pengguna);
             },
           ),
           buildFeatureButton(
@@ -306,7 +382,7 @@ class _HomepageState extends State<Homepage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.pengguna.namaLengkap,
+                        _pengguna.namaLengkap,
                       style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -317,7 +393,7 @@ class _HomepageState extends State<Homepage> {
                     Row(
                       children: [
                         Text(
-                          "ID ${widget.pengguna.rekening}",
+                          "ID ${_pengguna.rekening}",
                           style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 14,
@@ -336,7 +412,7 @@ class _HomepageState extends State<Homepage> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Text(
-                          "Rp. ${widget.pengguna.saldo}",
+                          "Rp. ${_pengguna.saldo}",
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 24,

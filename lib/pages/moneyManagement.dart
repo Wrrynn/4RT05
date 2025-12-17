@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:artos/widgets/bgPurple.dart';
 import 'package:artos/widgets/glass.dart';
 
+
 class ManajemenKeuanganPage extends StatelessWidget {
   const ManajemenKeuanganPage({super.key});
 
@@ -266,7 +267,6 @@ class ManajemenKeuanganPage extends StatelessWidget {
   }
 
   // ---------------- BUDGET CARD ----------------
-
   Widget _buildBudgetCard({
     required String title,
     required String usedText,
@@ -286,47 +286,97 @@ class ManajemenKeuanganPage extends StatelessWidget {
         ],
       ),
       borderColor: Colors.white.withOpacity(0.15),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            usedText,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 13,
-            ),
-          ),
-          const Spacer(),
-          Container(
-            height: 8,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              color: Colors.white.withOpacity(0.12),
-            ),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: progress.clamp(0.0, 1.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  gradient: const LinearGradient(
-                    colors: [
-                      Color(0xFFF6339A),
-                      Color(0xFFAC00FF),
-                    ],
+          // Left side content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ),
+                const SizedBox(height: 4),
+                Text(
+                  usedText,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  height: 8,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: Colors.white.withOpacity(0.12),
+                  ),
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: progress.clamp(0.0, 1.0),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFFF6339A),
+                            Color(0xFFAC00FF),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
+          ),
+          const SizedBox(width: 12),
+          // Right side buttons
+          Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Edit button
+              GlassContainer(
+                width: 32,
+                height: 32,
+                borderRadius: BorderRadius.circular(8),
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.orange.withOpacity(0.15),
+                    Colors.orange.withOpacity(0.05),
+                  ],
+                ),
+                borderColor: Colors.orange.withOpacity(0.2),
+                child: const Icon(
+                  Icons.edit_rounded,
+                  color: Colors.orangeAccent,
+                  size: 16,
+                ),
+              ),
+              // Delete button
+              GlassContainer(
+                width: 32,
+                height: 32,
+                borderRadius: BorderRadius.circular(8),
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.red.withOpacity(0.15),
+                    Colors.red.withOpacity(0.05),
+                  ],
+                ),
+                borderColor: Colors.red.withOpacity(0.2),
+                child: const Icon(
+                  Icons.delete_rounded,
+                  color: Colors.redAccent,
+                  size: 16,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -334,39 +384,9 @@ class ManajemenKeuanganPage extends StatelessWidget {
   }
 
   // ---------------- BOTTOM BUTTONS ----------------
-
   Widget _buildBottomButtons(BuildContext context) {
     return Row(
       children: [
-        Expanded(
-          child: SizedBox(
-            height: 50,
-            child: OutlinedButton(
-              onPressed: () {
-                // halaman atur budget
-                // Navigator.pushNamed(context, '/budget');
-              },
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(
-                  color: Colors.white.withOpacity(0.35),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                backgroundColor: Colors.black.withOpacity(0.4),
-              ),
-              child: const Text(
-                "Atur",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 14),
         Expanded(
           child: SizedBox(
             height: 50,
@@ -391,7 +411,7 @@ class ManajemenKeuanganPage extends StatelessWidget {
             ),
           ),
         ),
-      ],
+      ], 
     );
   }
 }
