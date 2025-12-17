@@ -5,6 +5,7 @@ import 'package:artos/widgets/glass.dart';
 import 'package:artos/controller/topUpCtrl.dart';
 import 'package:artos/model/pengguna.dart';
 import 'package:artos/model/topup.dart';
+import 'dart:async';
 
 class TopUpPage extends StatefulWidget {
   const TopUpPage({super.key});
@@ -22,6 +23,7 @@ class _TopUpPageState extends State<TopUpPage> {
   final TopupController _topupCtrl = TopupController();
   late Pengguna currentUser;
   Topup? pendingTopup;
+  Timer? _timer;
 
   @override
   void didChangeDependencies() {
@@ -33,13 +35,53 @@ class _TopUpPageState extends State<TopUpPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m), duration: const Duration(seconds: 2)));
   }
 
+  @override
+  void dispose() {
+    _timer?.cancel(); // Pastikan timer dimatikan saat keluar halaman
+    _amountController.dispose();
+    super.dispose();
+  }
+
   // Fungsi membuka link Midtrans
-  Future<void> _launchMidtrans(String? url) async {
-    if (url != null) {
-      final Uri uri = Uri.parse(url);
-      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-        _msg("Tidak bisa membuka link pembayaran");
-      }
+  void _launchMidtrans(String? url) async {
+    if (url == null) return;
+
+    // Gunakan Uri.parse agar kompatibel dengan versi terbaru
+    final Uri uri = Uri.parse(url);
+
+    try {
+      // Kita coba paksa buka tanpa mengecek canLaunch dulu (karena sering false positif di Android 11+)
+      // Mode externalApplication akan memaksa link dibuka di Chrome/Browser
+      await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication, 
+      );
+      
+      // --- Mulai Timer Cek Status ---
+      _timer = Timer.periodic(const Duration(seconds: 5), (timer) async {
+         // ... (Kode timer cek status TETAP SAMA seperti sebelumnya) ...
+         if (pendingTopup?.orderId == null) return;
+         
+         String status = await _topupCtrl.checkTransactionStatus(
+            pendingTopup!.orderId!,
+            currentUser.idPengguna.toString(),
+            pendingTopup!.jumlah
+         );
+         
+         if (status == "success") {
+           timer.cancel();
+           if (mounted) {
+             ScaffoldMessenger.of(context).showSnackBar(
+               const SnackBar(content: Text("Pembayaran Berhasil!"), backgroundColor: Colors.green)
+             );
+             Navigator.pop(context);
+           }
+         }
+      });
+
+    } catch (e) {
+      print("Gagal membuka link: $e");
+      _msg("Gagal membuka browser. Silakan klik tombol 'Buka Halaman Pembayaran Lagi'");
     }
   }
 
