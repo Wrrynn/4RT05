@@ -1,90 +1,69 @@
 class Transaksi {
-  //private atributes
-  final int _idTransaksi;
-  final int _idPengguna;
-  final int _idKategori;
-  double _totalTransaksi;
-  String _deskripsi;
-  DateTime _waktuDibuat;
-  String _metodeTransaksi;
-  String _status;
-  double _biayaTransfer;
-  String _targetTransaksi;
+  // ====== ATTRIBUTES ======
+  final String? idTransaksi;        // id_transaksi (PK - UUID)
+  final String idPengguna;         // id_pengguna (FK - pengirim, UUID)
+  final String idKategori;         // id_kategori (FK, UUID)
+  final String targetPengguna;     // target_pengguna (FK - penerima, UUID)
 
-  //Constructor
+  double totalTransaksi;        // total_transaksi
+  String deskripsi;             // deskripsi
+  String metodeTransaksi;       // metode_transaksi
+  String status;                // status
+  double biayaTransfer;         // biaya_transfer
+  DateTime waktuDibuat;         // waktu_dibuat
+
+  // ====== CONSTRUCTOR ======
   Transaksi({
-    required int idTransaksi,
-    required int idPengguna,
-    required int idKategori,
-    required double totalTransaksi,
-    required String deskripsi,
-    required DateTime waktuDibuat,
-    required String metodeTransaksi,
-    required String status,
-    required double biayaTransfer,
-    required String targetTransaksi,
-  }) : _idTransaksi = idTransaksi,
-       _idPengguna = idPengguna,
-       _idKategori = idKategori,
-       _totalTransaksi = totalTransaksi,
-       _deskripsi = deskripsi,
-       _waktuDibuat = waktuDibuat,
-       _metodeTransaksi = metodeTransaksi,
-       _status = status,
-       _biayaTransfer = biayaTransfer,
-       _targetTransaksi = targetTransaksi;
+    this.idTransaksi,
+    required this.idPengguna,
+    required this.idKategori,
+    required this.targetPengguna,
+    required this.totalTransaksi,
+    required this.deskripsi,
+    required this.metodeTransaksi,
+    required this.status,
+    required this.biayaTransfer,
+    required this.waktuDibuat,
+  });
 
-  // Getter & Setter
-  int get idTransaksi => _idTransaksi;
-
-  int get idPengguna => _idPengguna;
-
-  int get idKategori => _idKategori;
-
-  double get totalTransaksi => _totalTransaksi;
-  set totalTransaksi(double value) => _totalTransaksi = value;
-
-  String get deskripsi => _deskripsi;
-  set deskripsi(String value) => _deskripsi = value;
-
-  DateTime get waktuDibuat => _waktuDibuat;
-  set waktuDibuat(DateTime value) => _waktuDibuat = value;
-
-  String get metodeTransaksi => _metodeTransaksi;
-  set metodeTransaksi(String value) => _metodeTransaksi = value;
-
-  String get status => _status;
-  set status(String value) => _status = value;
-
-  double get biayaTransfer => _biayaTransfer;
-  set biayaTransfer(double value) => _biayaTransfer = value;
-
-  String get targetTransaksi => _targetTransaksi;
-  set targetTransaksi(String value) => _targetTransaksi = value;
-
-  // method
-  bool buatTransaksi() {
-    return true;
+  // ====== FROM DATABASE ======
+  factory Transaksi.fromMap(Map<String, dynamic> map) {
+    return Transaksi(
+      idTransaksi: map['id_transaksi']?.toString(),
+      idPengguna: map['id_pengguna']?.toString() ?? '',
+      idKategori: map['id_kategori']?.toString() ?? '',
+      targetPengguna: map['target_pengguna']?.toString() ?? '',
+      totalTransaksi: (map['total_transaksi'] is num)
+          ? (map['total_transaksi'] as num).toDouble()
+          : double.tryParse(map['total_transaksi']?.toString() ?? '') ?? 0.0,
+      deskripsi: map['deskripsi']?.toString() ?? '',
+      metodeTransaksi: map['metode_transaksi']?.toString() ?? '',
+      status: map['status']?.toString() ?? '',
+      biayaTransfer: (map['biaya_transfer'] is num)
+          ? (map['biaya_transfer'] as num).toDouble()
+          : double.tryParse(map['biaya_transfer']?.toString() ?? '') ?? 0.0,
+      waktuDibuat: map['waktu_dibuat'] is String
+          ? DateTime.parse(map['waktu_dibuat'])
+          : (map['waktu_dibuat'] is DateTime ? map['waktu_dibuat'] : DateTime.now()),
+    );
   }
 
-  String getBuktiTransaksi() {
-    return '''
-==== Bukti Transaksi ====
-ID Transaksi   : $_idTransaksi
-ID Pengguna    : $_idPengguna
-Kategori       : $_idKategori
-Metode         : $_metodeTransaksi
-Status         : $_status
-Total          : Rp${_totalTransaksi.toStringAsFixed(2)}
-Biaya Transfer : Rp${_biayaTransfer.toStringAsFixed(2)}
-Target         : $_targetTransaksi
-Deskripsi      : $_deskripsi
-Waktu Dibuat   : $_waktuDibuat
-=========================
-''';
-  }
-
-  double getTotalTransaksi() {
-    return _totalTransaksi + _biayaTransfer;
+  // ====== TO DATABASE ======
+  Map<String, dynamic> toMap() {
+    final map = <String, dynamic>{
+      'id_pengguna': idPengguna,
+      'id_kategori': idKategori,
+      'target_pengguna': targetPengguna,
+      'total_transaksi': totalTransaksi,
+      'deskripsi': deskripsi,
+      'metode_transaksi': metodeTransaksi,
+      'status': status,
+      'biaya_transfer': biayaTransfer,
+      'waktu_dibuat': waktuDibuat.toIso8601String(),
+    };
+    if (idTransaksi != null && idTransaksi!.isNotEmpty) {
+      map['id_transaksi'] = idTransaksi;
+    }
+    return map;
   }
 }
