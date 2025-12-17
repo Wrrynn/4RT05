@@ -2,6 +2,10 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:artos/widgets/bgPurple.dart';
 import 'package:artos/widgets/glass.dart';
+import 'package:artos/service/db_service.dart';
+import 'package:artos/controller/sendCtrl.dart';
+import 'package:artos/model/kategori.dart';
+import 'package:artos/model/pengguna.dart';
 
 class SendMoneyPage extends StatefulWidget {
   const SendMoneyPage({super.key});
@@ -15,17 +19,55 @@ class _SendMoneyPageState extends State<SendMoneyPage> {
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _messageController = TextEditingController();
 
-  final List<String> _categories = [
-    'Keluarga',
-    'Teman',
-    'Belanja',
-    'Tagihan',
-    'Transportasi',
-    'Makanan & Minuman',
-    'Lainnya',
-  ];
+  final SendController _ctrl = SendController(DBService.client);
 
-  String? _selectedCategory;
+  List<Kategori> _categories = [];
+  String? _selectedCategoryId;
+  String? _selectedRecipientRekening;
+  String? _currentUserId;
+  double _currentSaldo = 0.0;
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentUserId = DBService.client.auth.currentUser?.id;
+    if (_currentUserId != null) {
+      _loadInitialData();
+    } else {
+      // no authenticated user — show warning
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('User belum login')));
+      });
+    }
+  }
+
+  Future<void> _loadInitialData() async {
+    setState(() => _loading = true);
+    try {
+      final cats = await _ctrl.getKategoriDropdown(_currentUserId!);
+      final saldo = await _ctrl.getSaldo(_currentUserId!);
+      setState(() {
+        _categories = cats;
+        _currentSaldo = saldo;
+      });
+      
+      if (cats.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tidak ada kategori di database. Buat kategori terlebih dahulu.'),
+            backgroundColor: Colors.red,
+          )
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal load data: $e'))
+      );
+    } finally {
+      setState(() => _loading = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -139,8 +181,8 @@ class _SendMoneyPageState extends State<SendMoneyPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          Text(
+        children: [
+          const Text(
             "Dana Saat Ini",
             style: TextStyle(
               color: Colors.white70,
@@ -148,10 +190,10 @@ class _SendMoneyPageState extends State<SendMoneyPage> {
               fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: 6),
+          const SizedBox(height: 6),
           Text(
-            "Rp. 00000000",
-            style: TextStyle(
+            'Rp. ${_currentSaldo.toInt()}',
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 24,
               fontWeight: FontWeight.w800,
@@ -164,7 +206,6 @@ class _SendMoneyPageState extends State<SendMoneyPage> {
   }
 
   // ---------------- FIELD KONTAK ----------------
-
   Widget _buildContactField() {
     return GlassContainer(
       width: double.infinity,
@@ -180,14 +221,24 @@ class _SendMoneyPageState extends State<SendMoneyPage> {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
-      child: TextField(
-        controller: _contactController,
-        style: const TextStyle(color: Colors.white),
-        decoration: const InputDecoration(
-          hintText: "Masukkan Kontak atau ID",
-          hintStyle: TextStyle(color: Colors.white54),
-          border: InputBorder.none,
-        ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _contactController,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                hintText: "Masukkan Rekening Penerima",
+                hintStyle: TextStyle(color: Colors.white54),
+                border: InputBorder.none,
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: _openSearchRecipient,
+            icon: const Icon(Icons.search, color: Colors.white70),
+          ),
+        ],
       ),
     );
   }
@@ -297,6 +348,35 @@ class _SendMoneyPageState extends State<SendMoneyPage> {
   // ---------------- DROPDOWN KATEGORI ----------------
 
   Widget _buildCategoryDropdown() {
+    // Jika tidak ada kategori, tampilkan pesan error
+    if (_categories.isEmpty) {
+      return GlassContainer(
+        width: double.infinity,
+        height: 60,
+        borderRadius: BorderRadius.circular(16),
+        borderColor: Colors.red.withOpacity(0.5),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        gradient: LinearGradient(
+          colors: [
+            Colors.red.withOpacity(0.1),
+            Colors.red.withOpacity(0.05),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        child: const Center(
+          child: Text(
+            'Anda belum memiliki kategori. Buat kategori terlebih dahulu.',
+            style: TextStyle(
+              color: Colors.redAccent,
+              fontSize: 12,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+
     return GlassContainer(
       width: double.infinity,
       height: 60,
@@ -317,7 +397,7 @@ class _SendMoneyPageState extends State<SendMoneyPage> {
             dropdownColor: const Color(0xFF2B0B3A),
             icon: const Icon(Icons.keyboard_arrow_down_rounded,
                 color: Colors.white),
-            value: _selectedCategory,
+            value: _selectedCategoryId,
             hint: const Text(
               'Kategori',
               style: TextStyle(
@@ -332,14 +412,14 @@ class _SendMoneyPageState extends State<SendMoneyPage> {
             items: _categories
                 .map(
                   (kategori) => DropdownMenuItem(
-                    value: kategori,
-                    child: Text(kategori),
+                    value: kategori.idKategori,
+                    child: Text(kategori.namaKategori),
                   ),
                 )
                 .toList(),
             onChanged: (value) {
               setState(() {
-                _selectedCategory = value;
+                _selectedCategoryId = value;
               });
             },
           ),
@@ -355,14 +435,14 @@ class _SendMoneyPageState extends State<SendMoneyPage> {
       width: double.infinity,
       height: 55,
       child: ElevatedButton(
-        onPressed: _onSendPressed,
+        onPressed: _loading ? null : _onSendPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFFAC00FF),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
         ),
-        child: const Text(
+        child: _loading ? const CircularProgressIndicator() : const Text(
           "Kirim Dana",
           style: TextStyle(
             color: Colors.white,
@@ -374,16 +454,134 @@ class _SendMoneyPageState extends State<SendMoneyPage> {
     );
   }
 
-  void _onSendPressed() {
-    // Sementara tampilkan snackbar
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Mengirim ${_amountController.text.isEmpty ? "0" : _amountController.text} '
-          'ke ${_contactController.text.isEmpty ? "penerima" : _contactController.text}'
-          '${_selectedCategory != null ? " (Kategori: $_selectedCategory)" : ""}',
-        ),
-      ),
+  Future<void> _openSearchRecipient() async {
+    final selected = await showDialog<Pengguna?>(
+      context: context,
+      builder: (ctx) {
+        final TextEditingController qCtrl = TextEditingController();
+        List<Pengguna> results = [];
+        bool searching = false;
+        return StatefulBuilder(builder: (c, setSt) {
+          return AlertDialog(
+            title: const Text('Cari Penerima'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: qCtrl,
+                  decoration: const InputDecoration(hintText: 'Ketik nama'),
+                  onChanged: (v) async {
+                    if (v.trim().isEmpty) return;
+                    setSt(() => searching = true);
+                    try {
+                      final r = await _ctrl.searchPengguna(v.trim());
+                      setSt(() => results = r);
+                    } catch (e) {
+                      setSt(() => results = []);
+                    } finally {
+                      setSt(() => searching = false);
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+                if (searching) const CircularProgressIndicator(),
+                if (!searching && results.isEmpty) const Text('Tidak ada hasil'),
+                if (results.isNotEmpty)
+                  SizedBox(
+                    height: 200,
+                    width: double.maxFinite,
+                    child: ListView.builder(
+                      itemCount: results.length,
+                      itemBuilder: (context, index) {
+                        final p = results[index];
+                        return ListTile(
+                          title: Text(p.namaLengkap),
+                          subtitle: Text(p.rekening ?? 'Tanpa rekening'),
+                          onTap: () => Navigator.of(ctx).pop(p),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(ctx).pop(null), child: const Text('Batal')),
+            ],
+          );
+        });
+      },
     );
+
+    if (selected != null) {
+      setState(() {
+        _selectedRecipientRekening = selected.rekening;
+        _contactController.text = selected.rekening ?? '';
+      });
+    }
+  }
+
+  void _onSendPressed() async {
+    final penerimaRekening = _selectedRecipientRekening ?? _contactController.text.trim();
+    final nominal = double.tryParse(_amountController.text.replaceAll(',', '')) ?? 0.0;
+
+    if (_currentUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('User belum login')));
+      return;
+    }
+    if (penerimaRekening.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Isi rekening penerima')));
+      return;
+    }
+    
+    if (nominal <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nominal tidak valid')));
+      return;
+    }
+    
+    if (_selectedCategoryId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih kategori')));
+      return;
+    }
+
+    setState(() => _loading = true);
+    try {
+      // Validasi rekening penerima ada di database
+      final penerima = await _ctrl.getPenggunaByRekening(penerimaRekening);
+      if (penerima == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Rekening penerima tidak ditemukan.'),
+            backgroundColor: Colors.red,
+          )
+        );
+        setState(() => _loading = false);
+        return;
+      }
+      
+      await _ctrl.kirimUang(
+        pengirimId: _currentUserId!,
+        penerimaRekening: penerimaRekening,
+        kategoriId: _selectedCategoryId!,
+        nominal: nominal,
+        metodeTransaksi: 'transfer',
+        deskripsi: _messageController.text,
+        biayaTransfer: 0,
+      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Transaksi berhasil')));
+      _amountController.clear();
+      _contactController.clear();
+      setState(() {
+        _selectedCategoryId = null;
+        _selectedRecipientRekening = null;
+      });
+      // refresh balance
+      final s = await _ctrl.getSaldo(_currentUserId!);
+      setState(() => _currentSaldo = s);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e')));
+    } finally {
+      setState(() => _loading = false);
+    }
   }
 }
+
