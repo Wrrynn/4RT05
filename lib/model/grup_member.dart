@@ -1,56 +1,94 @@
 class GrupMember {
-  // private attribute
-  final int _idMember;
-  final int _idGrup;
-  final int _idPengguna;
-  double _jumlahKontribusi;
+  final String _idMember;
+  final String _idGrup;
+  final String _idPengguna;
+  int _jumlahKontribusi;
+  String _role;
+  final DateTime _joinedAt;
 
-  // Constructor
   GrupMember({
-    required int idMember,
-    required int idGrup,
-    required int idPengguna,
-    double jumlahKontribusi = 0,
+    required String idMember,
+    required String idGrup,
+    required String idPengguna,
+    int jumlahKontribusi = 0,
+    String role = 'member',
+    DateTime? joinedAt,
   })  : _idMember = idMember,
         _idGrup = idGrup,
         _idPengguna = idPengguna,
-        _jumlahKontribusi = jumlahKontribusi;
+        _jumlahKontribusi = jumlahKontribusi,
+        _role = role,
+        _joinedAt = joinedAt ?? DateTime.now();
 
-  //  Getter dan Setter
-  int get idMember => _idMember;
+  factory GrupMember.fromJson(Map<String, dynamic> json) {
+    return GrupMember(
+      idMember: json['id_member'] as String,
+      idGrup: json['id_grup'] as String,
+      idPengguna: json['id_pengguna'] as String,
+      jumlahKontribusi:
+          (json['jumlah_kontribusi'] as num?)?.toInt() ?? 0,
+      role: (json['role'] ?? 'member') as String,
+      joinedAt: json['joined_at'] != null
+          ? DateTime.parse(json['joined_at'])
+          : DateTime.now(),
+    );
+  }
 
-  int get idGrup => _idGrup;
+  Map<String, dynamic> toJson() {
+    return {
+      'id_member': idMember,
+      'id_grup': idGrup,
+      'id_pengguna': idPengguna,
+      'jumlah_kontribusi': jumlahKontribusi,
+      'role': role,
+      'joined_at': joinedAt.toIso8601String(),
+    };
+  }
 
-  int get idPengguna => _idPengguna;
+  Map<String, dynamic> toInsertJson() {
+    return {
+      'id_grup': idGrup,
+      'id_pengguna': idPengguna,
+      'jumlah_kontribusi': jumlahKontribusi,
+      'role': role,
+    };
+  }
 
-  double get jumlahKontribusi => _jumlahKontribusi;
-  set jumlahKontribusi(double value) => _jumlahKontribusi = value;
+  Map<String, dynamic> toUpdateKontribusiJson() {
+    return {
+      'jumlah_kontribusi': jumlahKontribusi,
+    };
+  }
 
-  // Method 
-  void tambahKontribusi(double jumlah) {
-    if (jumlah > 0) {
-      _jumlahKontribusi += jumlah;
-      print("Kontribusi sebesar Rp${jumlah.toStringAsFixed(2)} berhasil ditambahkan.");
-    } else {
-      print("Jumlah kontribusi harus lebih dari 0!");
+  String get idMember => _idMember;
+  String get idGrup => _idGrup;
+  String get idPengguna => _idPengguna;
+
+  int get jumlahKontribusi => _jumlahKontribusi;
+  set jumlahKontribusi(int value) {
+    if (value >= 0) _jumlahKontribusi = value;
+  }
+
+  String get role => _role;
+  set role(String value) => _role = value;
+
+  DateTime get joinedAt => _joinedAt;
+
+  void tambahKontribusi(int jumlah) {
+    if (jumlah <= 0) {
+      throw Exception("Jumlah kontribusi harus lebih dari 0");
     }
+    _jumlahKontribusi += jumlah;
   }
 
-  void keluarGrup() {
-    print("Member dengan ID $_idMember telah keluar dari grup $_idGrup.");
-    // Logika tambahan bisa ditambahkan di sini, misalnya:
-    // - Menghapus data member dari database
-    // - Memperbarui total saldo grup
-  }
-
-  // 🧾 Opsional: Tampilkan info member
   String getInformasiMember() {
     return '''
 👤 Informasi Grup Member:
 - ID Member: $_idMember
 - ID Grup: $_idGrup
 - ID Pengguna: $_idPengguna
-- Total Kontribusi: Rp${_jumlahKontribusi.toStringAsFixed(2)}
+- Role: $_role
+- Total Kontribusi: Rp$_jumlahKontribusi
 ''';
   }
 }

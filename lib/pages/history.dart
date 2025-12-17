@@ -2,6 +2,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:artos/widgets/bgPurple.dart';
 import 'package:artos/widgets/glass.dart';
+import 'package:artos/pages/homePage.dart';
+import 'package:artos/model/pengguna.dart';
+import 'package:artos/service/db_service.dart';
 import 'bukti.dart';
 
 class HistoryPage extends StatelessWidget {
@@ -92,7 +95,7 @@ class HistoryPage extends StatelessWidget {
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
               onPressed: (){
-                Navigator.pushReplacementNamed(context, '/home');
+                _goToHomepage(context);
               },
             ),
             title: const Text(
@@ -159,6 +162,7 @@ class HistoryPage extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         child: Row(
           children: [
+
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -195,5 +199,37 @@ class HistoryPage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  // Helper: fetch current Pengguna and navigate to Homepage
+  Future<void> _goToHomepage(BuildContext context) async {
+    final uid = DBService.client.auth.currentUser?.id;
+    if (uid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Belum login')),
+      );
+      return;
+    }
+
+    try {
+      final res = await DBService.client
+          .from('Pengguna')
+          .select()
+          .eq('id_pengguna', uid)
+          .single();
+
+      final pengguna = Pengguna.fromJson(res);
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => Homepage(pengguna: pengguna),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal memuat data pengguna: $e')),
+      );
+    }
   }
 }

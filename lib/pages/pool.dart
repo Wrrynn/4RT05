@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:artos/widgets/bgPurple.dart';
 import 'package:artos/widgets/glass.dart';
-import 'package:artos/widgets/navbar.dart';
+import 'package:artos/controller/poolCtrl.dart';
+import 'package:artos/model/pengguna.dart';
+import 'package:artos/pages/homePage.dart';
+import 'package:artos/model/grup.dart';
+import 'package:artos/service/db_service.dart';
 
 class PoolPage extends StatefulWidget {
   const PoolPage({super.key});
@@ -11,20 +15,137 @@ class PoolPage extends StatefulWidget {
 }
 
 class _PoolPageState extends State<PoolPage> {
+  final PoolController _ctrl = PoolController();
+
+  final _namaCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
+  final _targetCtrl = TextEditingController();
+  final _durasiCtrl = TextEditingController();
+
+  final _nominalTambahCtrl = TextEditingController();
+  final _nominalTarikCtrl = TextEditingController();
+
+  // Pengaturan grup
+  final _targetBaruCtrl = TextEditingController();
+  final _durasiBaruCtrl = TextEditingController();
+
+  // Invite
+  final _rekeningInviteCtrl = TextEditingController();
+  final _teleponInviteCtrl = TextEditingController();
+
+  List<Grup> _groups = [];
+  bool _loading = true;
+
+  // cache kontribusi user per grup
+  final Map<String, int> _myContribByGroup = {};
+  int _totalKontribusiSaya = 0;
+
+  String get _uid => DBService.client.auth.currentUser?.id ?? "";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadGroups();
+  }
+
+  @override
+  void dispose() {
+    _namaCtrl.dispose();
+    _passCtrl.dispose();
+    _targetCtrl.dispose();
+    _durasiCtrl.dispose();
+    _nominalTambahCtrl.dispose();
+    _nominalTarikCtrl.dispose();
+    _targetBaruCtrl.dispose();
+    _durasiBaruCtrl.dispose();
+    _rekeningInviteCtrl.dispose();
+    _teleponInviteCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadGroups() async {
+    setState(() => _loading = true);
+
+    if (_uid.isEmpty) {
+      setState(() {
+        _groups = [];
+        _myContribByGroup.clear();
+        _totalKontribusiSaya = 0;
+        _loading = false;
+      });
+      return;
+    }
+
+    final data = await _ctrl.getMyGroups(idPengguna: _uid);
+
+    // hitung kontribusi saya per grup + totalnya
+    final Map<String, int> contribMap = {};
+    int total = 0;
+
+    for (final g in data) {
+      final c = await _ctrl.getMyContribution(
+        idGrup: g.idGrup,
+        idPengguna: _uid,
+      );
+      contribMap[g.idGrup] = c;
+      total += c;
+    }
+
+    setState(() {
+      _groups = data;
+      _myContribByGroup
+        ..clear()
+        ..addAll(contribMap);
+      _totalKontribusiSaya = total;
+      _loading = false;
+    });
+  }
+
+  // Helper: fetch current Pengguna and navigate to Homepage
+  Future<void> _goToHomepage() async {
+    final uid = DBService.client.auth.currentUser?.id;
+    if (uid == null) {
+      _toast('Belum login');
+      return;
+    }
+
+    try {
+      final res = await DBService.client
+          .from('Pengguna')
+          .select()
+          .eq('id_pengguna', uid)
+          .single();
+
+      final pengguna = Pengguna.fromJson(res as Map<String, dynamic>);
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => Homepage(pengguna: pengguna),
+        ),
+      );
+    } catch (e) {
+      _toast('Gagal memuat data pengguna');
+    }
+  }
+
+  // ===================== UI =====================
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
       extendBodyBehindAppBar: true,
-
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Colors.white),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Colors.white,
+          ),
           onPressed: () {
-            Navigator.pushReplacementNamed(context, '/home');
+            _goToHomepage();
           },
         ),
         centerTitle: true,
@@ -44,19 +165,9 @@ class _PoolPageState extends State<PoolPage> {
           const SizedBox(width: 8),
         ],
       ),
-
-      body: BackgroundApp(
-        child: SafeArea(
-          child: _buildPoolContent(),
-        ),
-      ),
-
-      // kalau mau navbar kelihatan juga di Pool
-      
+      body: BackgroundApp(child: SafeArea(child: _buildPoolContent())),
     );
   }
-
-  // ================== KONTEN POOL ==================
 
   Widget _buildPoolContent() {
     return Column(
@@ -69,7 +180,6 @@ class _PoolPageState extends State<PoolPage> {
               children: [
                 _buildTotalKontribusiCard(),
                 const SizedBox(height: 24),
-
                 const Text(
                   "Grup",
                   style: TextStyle(
@@ -79,32 +189,47 @@ class _PoolPageState extends State<PoolPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
+                if (_loading)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.only(top: 24),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else if (_groups.isEmpty)
+                  GlassContainer(
+                    width: double.infinity,
+                    height: 90,
+                    borderRadius: BorderRadius.circular(18),
+                    padding: const EdgeInsets.all(16),
+                    child: const Center(
+                      child: Text(
+                        "Belum ada grup.\nTekan tombol + untuk membuat grup.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                    ),
+                  )
+                else
+                  ..._groups.map((g) {
+                    final progress = (g.target <= 0)
+                        ? 0.0
+                        : (g.totalSaldo / g.target);
+                    final progressClamped = progress.clamp(0.0, 1.0);
 
-                // Grup 1
-                _buildGroupCard(
-                  namaGrup: "Bungsu",
-                  memberInfo: "7 Member • 5 hari lagi",
-                  id: "ID 8989909",
-                  pass: "Pass: ******",
-                  totalTerkumpul: "Rp. 3,5jt/Rp. 7jt",
-                  progress: 0.10,
-                  progressText: "10% Terkumpul",
-                  kontribusiAnda: "Rp. 100.000",
-                ),
+                    final myContrib = _myContribByGroup[g.idGrup] ?? 0;
 
-                const SizedBox(height: 16),
-
-                // Grup 2
-                _buildGroupCard(
-                  namaGrup: "Dufan",
-                  memberInfo: "7 Member • 5 hari lagi",
-                  id: "ID 8989909",
-                  pass: "Pass: ******",
-                  totalTerkumpul: "Rp. 5jt/Rp. 7jt",
-                  progress: 0.80,
-                  progressText: "80% Terkumpul",
-                  kontribusiAnda: "Rp. 1.000.000",
-                ),
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: _buildGroupCard(
+                        grup: g,
+                        myContrib: myContrib,
+                        progress: progressClamped,
+                        progressText:
+                            "${(progressClamped * 100).toStringAsFixed(0)}% Terkumpul",
+                      ),
+                    );
+                  }),
               ],
             ),
           ),
@@ -122,16 +247,13 @@ class _PoolPageState extends State<PoolPage> {
       gradient: const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [
-          Color(0xFF7C1CF5),
-          Color(0xFFBF2BD4),
-        ],
+        colors: [Color(0xFF7C1CF5), Color(0xFFBF2BD4)],
       ),
       borderColor: Colors.white.withOpacity(0.2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          Text(
+        children: [
+          const Text(
             "Total Kontribusi Anda",
             style: TextStyle(
               color: Colors.white70,
@@ -139,22 +261,19 @@ class _PoolPageState extends State<PoolPage> {
               fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
-            "Rp. 1000",
-            style: TextStyle(
+            "Rp. $_totalKontribusiSaya",
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 28,
               fontWeight: FontWeight.w800,
             ),
           ),
-          SizedBox(height: 8),
-          Text(
+          const SizedBox(height: 8),
+          const Text(
             "Kumpulkan Uang Bersama Secara Pribadi",
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 13,
-            ),
+            style: TextStyle(color: Colors.white70, fontSize: 13),
           ),
         ],
       ),
@@ -162,17 +281,17 @@ class _PoolPageState extends State<PoolPage> {
   }
 
   Widget _buildGroupCard({
-    required String namaGrup,
-    required String memberInfo,
-    required String id,
-    required String pass,
-    required String totalTerkumpul,
+    required Grup grup,
+    required int myContrib,
     required double progress,
     required String progressText,
-    required String kontribusiAnda,
   }) {
+    final totalTerkumpul =
+        "Rp. ${grup.totalSaldo.toStringAsFixed(0)}/Rp. ${grup.target.toStringAsFixed(0)}";
+    final passMask = grup.passwordGrup.isEmpty ? "-" : "******";
+
     return GestureDetector(
-      onTap: () => _showGroupInfoSheet(namaGrup: namaGrup),
+      onTap: () => _showGroupInfoSheet(grup: grup),
       child: GlassContainer(
         width: double.infinity,
         height: 240,
@@ -190,12 +309,11 @@ class _PoolPageState extends State<PoolPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // baris atas
             Row(
               children: [
                 Expanded(
                   child: Text(
-                    namaGrup,
+                    grup.namaGrup,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -206,49 +324,36 @@ class _PoolPageState extends State<PoolPage> {
                 const SizedBox(width: 8),
                 _smallPillButton(
                   label: "Tarik",
-                  onTap: () => _showTarikDanaSheet(namaGrup),
+                  onTap: () => _showTarikDanaSheet(grup),
                 ),
                 const SizedBox(width: 8),
                 _smallPillButton(
                   label: "Tambah",
-                  onTap: () => _showTambahDanaSheet(namaGrup),
+                  onTap: () => _showTambahDanaSheet(grup),
                 ),
               ],
             ),
             const SizedBox(height: 4),
             Text(
-              memberInfo,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 12,
-              ),
+              "Durasi: ${grup.durasi}",
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
             ),
             const SizedBox(height: 2),
             Text(
-              id,
-              style: const TextStyle(
-                color: Colors.white54,
-                fontSize: 11,
-              ),
+              "ID ${grup.idGrup}",
+              style: const TextStyle(color: Colors.white54, fontSize: 11),
             ),
             Text(
-              pass,
-              style: const TextStyle(
-                color: Colors.white54,
-                fontSize: 11,
-              ),
+              "Pass: $passMask",
+              style: const TextStyle(color: Colors.white54, fontSize: 11),
             ),
             const SizedBox(height: 10),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
                   "Total Terkumpul",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
                 ),
                 Text(
                   totalTerkumpul,
@@ -261,17 +366,14 @@ class _PoolPageState extends State<PoolPage> {
               ],
             ),
             const SizedBox(height: 6),
-
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: Container(
                 height: 8,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                ),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.1)),
                 child: FractionallySizedBox(
                   alignment: Alignment.centerLeft,
-                  widthFactor: progress.clamp(0, 1),
+                  widthFactor: progress,
                   child: Container(
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
@@ -283,25 +385,26 @@ class _PoolPageState extends State<PoolPage> {
               ),
             ),
             const SizedBox(height: 6),
-
             Row(
               children: [
                 SizedBox(
                   height: 32,
                   child: Stack(
                     children: [
-                      _circleAvatar(0),
-                      Positioned(left: 18, child: _circleAvatar(1)),
-                      Positioned(left: 36, child: _circleAvatar(2)),
+                      _circleAvatar(),
+                      Positioned(left: 18, child: _circleAvatar()),
+                      Positioned(left: 36, child: _circleAvatar()),
                     ],
                   ),
                 ),
                 const SizedBox(width: 16),
                 GestureDetector(
-                  onTap: () => _showGroupInfoSheet(namaGrup: namaGrup),
+                  onTap: () => _showGroupInfoSheet(grup: grup),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFF4EC7),
                       borderRadius: BorderRadius.circular(20),
@@ -319,10 +422,7 @@ class _PoolPageState extends State<PoolPage> {
                 const Spacer(),
                 Text(
                   progressText,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
               ],
             ),
@@ -331,22 +431,22 @@ class _PoolPageState extends State<PoolPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: const [
-                    Icon(Icons.attach_money_rounded,
-                        color: Colors.pinkAccent, size: 20),
+                const Row(
+                  children: [
+                    Icon(
+                      Icons.attach_money_rounded,
+                      color: Colors.pinkAccent,
+                      size: 20,
+                    ),
                     SizedBox(width: 4),
                     Text(
                       "Kontribusi Anda",
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
                     ),
                   ],
                 ),
                 Text(
-                  kontribusiAnda,
+                  "Rp. $myContrib",
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 14,
@@ -354,19 +454,21 @@ class _PoolPageState extends State<PoolPage> {
                   ),
                 ),
               ],
-            )
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _smallPillButton({required String label, required VoidCallback onTap}) {
+  Widget _smallPillButton({
+    required String label,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
           color: const Color(0xFFFF4EC7),
           borderRadius: BorderRadius.circular(20),
@@ -383,7 +485,7 @@ class _PoolPageState extends State<PoolPage> {
     );
   }
 
-  Widget _circleAvatar(int index) {
+  Widget _circleAvatar() {
     return Container(
       width: 28,
       height: 28,
@@ -391,7 +493,7 @@ class _PoolPageState extends State<PoolPage> {
         shape: BoxShape.circle,
         border: Border.all(color: Colors.black.withOpacity(0.5), width: 2),
         image: const DecorationImage(
-          image: AssetImage('assets/images/21.png'), // sesuaikan
+          image: AssetImage('assets/images/21.png'),
           fit: BoxFit.cover,
         ),
       ),
@@ -400,7 +502,159 @@ class _PoolPageState extends State<PoolPage> {
 
   // ================== POPUP / BOTTOM SHEETS ==================
 
-  void _showGroupInfoSheet({required String namaGrup}) {
+  void _showGroupInfoSheet({required Grup grup}) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return _roundedSheet(
+          child: FutureBuilder<List<Map<String, dynamic>>>(
+            future: _ctrl.getGroupMembers(
+              idGrup: grup.idGrup,
+            ), // <-- sekarang return Map
+            builder: (context, snap) {
+              final members = snap.data ?? [];
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "Info Grup ${grup.namaGrup}",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  if (snap.connectionState == ConnectionState.waiting)
+                    const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: CircularProgressIndicator(),
+                    )
+                  else if (members.isEmpty)
+                    const Text(
+                      "Belum ada member.",
+                      style: TextStyle(color: Colors.white70),
+                    )
+                  else
+                    ...members.map((m) {
+                      final pengguna = m['Pengguna'] as Map<String, dynamic>?;
+
+                      final nama = (pengguna?['nama_lengkap'] ?? '-') as String;
+                      final rekening =
+                          (pengguna?['rekening'] ?? '-')?.toString() ?? '-';
+                      final kontribusi = (m['jumlah_kontribusi'] ?? 0)
+                          .toString();
+
+                      return _memberRow(
+                        name: nama, // ✅ nama asli
+                        id: rekening, // ✅ no rekening
+                        amount: "Rp. $kontribusi",
+                      );
+                    }),
+
+                  const SizedBox(height: 16),
+                  const Divider(color: Colors.white24),
+                  const SizedBox(height: 8),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Target:",
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                            ),
+                          ),
+                          Text(
+                            "Rp. ${grup.target.toStringAsFixed(0)}",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "Durasi: ${grup.durasi}",
+                            style: const TextStyle(
+                              color: Colors.white60,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Column(
+                        children: [
+                          _smallPillButton(
+                            label: "Undang",
+                            onTap: () {
+                              Navigator.pop(context);
+                              _showInviteSheet(grup);
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                          _smallPillButton(
+                            label: "Pengaturan",
+                            onTap: () {
+                              Navigator.pop(context);
+                              _showPengaturanGrupSheet(grup);
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF4EC7),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      onPressed: () async {
+                        final err = await _ctrl.leaveGroup(
+                          idGrup: grup.idGrup,
+                          idPengguna: _uid,
+                        );
+                        if (!mounted) return;
+                        Navigator.pop(context);
+
+                        if (err != null) {
+                          _toast(err);
+                        } else {
+                          _toast("Berhasil keluar grup");
+                          _loadGroups();
+                        }
+                      },
+                      child: const Text("Keluar Grup"),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  void _showInviteSheet(Grup grup) {
+    _rekeningInviteCtrl.clear();
+    _teleponInviteCtrl.clear();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -409,81 +663,60 @@ class _PoolPageState extends State<PoolPage> {
         return _roundedSheet(
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "Info Grup $namaGrup",
-                style: const TextStyle(
+              const Text(
+                "Undang Anggota",
+                style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 16),
-
-              for (var i = 0; i < 5; i++)
-                _memberRow(
-                  name: "Member ${i + 1}",
-                  id: "ID 10${i}205",
-                  amount: "-Rp. 500.000",
-                ),
-
-              const SizedBox(height: 16),
-              const Divider(color: Colors.white24),
-              const SizedBox(height: 8),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text(
-                        "Target:",
-                        style: TextStyle(color: Colors.white70, fontSize: 13),
-                      ),
-                      Text(
-                        "Rp. 7.000.000",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        "Durasi: 6 bulan lagi",
-                        style: TextStyle(
-                          color: Colors.white60,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                  _smallPillButton(
-                    label: "Pengaturan",
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showPengaturanGrupSheet(namaGrup);
-                    },
-                  ),
-                ],
+              _glassTextFieldController(
+                controller: _rekeningInviteCtrl,
+                hint: "Rekening (opsional)",
+                keyboardType: TextInputType.text,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+              _glassTextFieldController(
+                controller: _teleponInviteCtrl,
+                hint: "Telepon (opsional)",
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 18),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF4EC7),
+                    backgroundColor: const Color(0xFF7C3CFF),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  onPressed: () {},
-                  child: const Text(
-                    "Keluar Grup",
-                    style: TextStyle(color: Colors.white),
-                  ),
+                  onPressed: () async {
+                    final rek = _rekeningInviteCtrl.text.trim();
+                    final tel = _teleponInviteCtrl.text.trim();
+
+                    final err = await _ctrl.inviteMember(
+                      idGrup: grup.idGrup,
+                      rekening: rek.isEmpty ? null : rek,
+                      telepon: tel.isEmpty ? null : tel,
+                    );
+
+                    if (!mounted) return;
+                    Navigator.pop(context);
+
+                    if (err != null) {
+                      _toast(err);
+                    } else {
+                      _toast("Berhasil mengundang anggota");
+                      _loadGroups();
+                    }
+                  },
+                  child: const Text("Undang"),
                 ),
               ),
             ],
@@ -493,7 +726,10 @@ class _PoolPageState extends State<PoolPage> {
     );
   }
 
-  void _showPengaturanGrupSheet(String namaGrup) {
+  void _showPengaturanGrupSheet(Grup grup) {
+    _targetBaruCtrl.text = grup.target.toStringAsFixed(0);
+    _durasiBaruCtrl.text = grup.durasi;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -513,12 +749,21 @@ class _PoolPageState extends State<PoolPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              _glassTextField(label: "Buat Target"),
+
+              _glassTextFieldController(
+                controller: _targetBaruCtrl,
+                hint: "Target Baru (angka)",
+                keyboardType: TextInputType.number,
+              ),
               const SizedBox(height: 12),
-              _glassTextField(label: "Buat Nominal Target"),
-              const SizedBox(height: 12),
-              _glassTextField(label: "Durasi"),
+
+              _glassTextFieldController(
+                controller: _durasiBaruCtrl,
+                hint: "Durasi Baru (contoh: 6 bulan)",
+                keyboardType: TextInputType.text,
+              ),
               const SizedBox(height: 18),
+
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -529,7 +774,26 @@ class _PoolPageState extends State<PoolPage> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () async {
+                    final t = double.tryParse(_targetBaruCtrl.text.trim());
+                    final d = _durasiBaruCtrl.text.trim();
+
+                    final err = await _ctrl.updateGroupSettings(
+                      idGrup: grup.idGrup,
+                      targetBaru: t,
+                      durasiBaru: d,
+                    );
+
+                    if (!mounted) return;
+                    Navigator.pop(context);
+
+                    if (err != null) {
+                      _toast(err);
+                    } else {
+                      _toast("Pengaturan grup tersimpan");
+                      _loadGroups();
+                    }
+                  },
                   child: const Text("Simpan"),
                 ),
               ),
@@ -540,7 +804,9 @@ class _PoolPageState extends State<PoolPage> {
     );
   }
 
-  void _showTambahDanaSheet(String namaGrup) {
+  void _showTambahDanaSheet(Grup grup) {
+    _nominalTambahCtrl.clear();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -560,7 +826,11 @@ class _PoolPageState extends State<PoolPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              _glassTextField(label: "Masukkan Nominal"),
+              _glassTextFieldController(
+                controller: _nominalTambahCtrl,
+                hint: "Masukkan Nominal",
+                keyboardType: TextInputType.number,
+              ),
               const SizedBox(height: 18),
               SizedBox(
                 width: double.infinity,
@@ -572,7 +842,26 @@ class _PoolPageState extends State<PoolPage> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () async {
+                    final jumlah =
+                        int.tryParse(_nominalTambahCtrl.text.trim()) ?? 0;
+
+                    final err = await _ctrl.addContribution(
+                      idGrup: grup.idGrup,
+                      idPengguna: _uid,
+                      jumlah: jumlah,
+                    );
+
+                    if (!mounted) return;
+                    Navigator.pop(context);
+
+                    if (err != null) {
+                      _toast(err);
+                    } else {
+                      _toast("Berhasil tambah dana");
+                      _loadGroups();
+                    }
+                  },
                   child: const Text("Tambah"),
                 ),
               ),
@@ -583,7 +872,9 @@ class _PoolPageState extends State<PoolPage> {
     );
   }
 
-  void _showTarikDanaSheet(String namaGrup) {
+  void _showTarikDanaSheet(Grup grup) {
+    _nominalTarikCtrl.clear();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -603,7 +894,11 @@ class _PoolPageState extends State<PoolPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              _glassTextField(label: "Masukkan Nominal"),
+              _glassTextFieldController(
+                controller: _nominalTarikCtrl,
+                hint: "Masukkan Nominal",
+                keyboardType: TextInputType.number,
+              ),
               const SizedBox(height: 18),
               SizedBox(
                 width: double.infinity,
@@ -615,7 +910,27 @@ class _PoolPageState extends State<PoolPage> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () async {
+                    final jumlah =
+                        int.tryParse(_nominalTarikCtrl.text.trim()) ?? 0;
+
+                    // withdraw personal: butuh idPengguna
+                    final err = await _ctrl.withdraw(
+                      idGrup: grup.idGrup,
+                      idPengguna: _uid,
+                      jumlah: jumlah,
+                    );
+
+                    if (!mounted) return;
+                    Navigator.pop(context);
+
+                    if (err != null) {
+                      _toast(err);
+                    } else {
+                      _toast("Berhasil tarik dana");
+                      _loadGroups();
+                    }
+                  },
                   child: const Text("Tarik"),
                 ),
               ),
@@ -627,6 +942,11 @@ class _PoolPageState extends State<PoolPage> {
   }
 
   void _showBuatGrupSheet() {
+    _namaCtrl.clear();
+    _passCtrl.clear();
+    _targetCtrl.clear();
+    _durasiCtrl.clear();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -646,13 +966,26 @@ class _PoolPageState extends State<PoolPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              _glassTextField(label: "Nama Grup"),
+              _glassTextFieldController(
+                controller: _namaCtrl,
+                hint: "Nama Grup",
+              ),
               const SizedBox(height: 12),
-              _glassTextField(label: "Password Grup"),
+              _glassTextFieldController(
+                controller: _passCtrl,
+                hint: "Password Grup",
+              ),
               const SizedBox(height: 12),
-              _glassTextField(label: "Target"),
+              _glassTextFieldController(
+                controller: _targetCtrl,
+                hint: "Target (angka)",
+                keyboardType: TextInputType.number,
+              ),
               const SizedBox(height: 12),
-              _glassTextField(label: "Durasi"),
+              _glassTextFieldController(
+                controller: _durasiCtrl,
+                hint: "Durasi (contoh: 6 bulan)",
+              ),
               const SizedBox(height: 18),
               SizedBox(
                 width: double.infinity,
@@ -664,12 +997,40 @@ class _PoolPageState extends State<PoolPage> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () async {
+                    final nama = _namaCtrl.text.trim();
+                    final pass = _passCtrl.text.trim();
+                    final target =
+                        double.tryParse(_targetCtrl.text.trim()) ?? 0.0;
+                    final durasi = _durasiCtrl.text.trim();
+
+                    if (nama.isEmpty ||
+                        pass.isEmpty ||
+                        target <= 0 ||
+                        durasi.isEmpty) {
+                      _toast("Lengkapi data grup dulu ya.");
+                      return;
+                    }
+
+                    try {
+                      await _ctrl.createGroup(
+                        namaGrup: nama,
+                        passwordGrup: pass,
+                        target: target,
+                        durasi: durasi,
+                      );
+
+                      if (!mounted) return;
+                      Navigator.pop(context);
+                      _toast("Grup berhasil dibuat");
+                      _loadGroups();
+                    } catch (e) {
+                      _toast(e.toString());
+                    }
+                  },
                   child: const Text(
                     "Buat Grup",
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -698,7 +1059,11 @@ class _PoolPageState extends State<PoolPage> {
     );
   }
 
-  Widget _glassTextField({required String label}) {
+  Widget _glassTextFieldController({
+    required TextEditingController controller,
+    required String hint,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
     return GlassContainer(
       width: double.infinity,
       height: 55,
@@ -714,14 +1079,13 @@ class _PoolPageState extends State<PoolPage> {
       child: Align(
         alignment: Alignment.centerLeft,
         child: TextField(
+          controller: controller,
+          keyboardType: keyboardType,
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             border: InputBorder.none,
-            hintText: label,
-            hintStyle: const TextStyle(
-              color: Colors.white54,
-              fontSize: 14,
-            ),
+            hintText: hint,
+            hintStyle: const TextStyle(color: Colors.white54, fontSize: 14),
           ),
         ),
       ),
@@ -737,7 +1101,7 @@ class _PoolPageState extends State<PoolPage> {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          _circleAvatar(0),
+          _circleAvatar(),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -753,10 +1117,7 @@ class _PoolPageState extends State<PoolPage> {
                 ),
                 Text(
                   id,
-                  style: const TextStyle(
-                    color: Color.fromARGB(255, 255, 255, 255),
-                    fontSize: 11,
-                  ),
+                  style: const TextStyle(color: Colors.white70, fontSize: 11),
                 ),
               ],
             ),
@@ -772,5 +1133,9 @@ class _PoolPageState extends State<PoolPage> {
         ],
       ),
     );
+  }
+
+  void _toast(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 }
