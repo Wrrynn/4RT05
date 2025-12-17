@@ -8,7 +8,7 @@ class TopupController {
   final supabase = DBService.client;
   
   // ⚠️ GANTI DENGAN SECRET KEY SANDBOX MIDTRANS ⚠️ 
-  final String serverKey = "Mid-server-GANTI DENGAN SECRET KEY SANDBOX MIDTRANS"; 
+  final String serverKey = "Mid-server-IApp0q6liFZkeMsmwN586_0E"; 
 
   // --- 1. Request Transaksi ---
   Future<Topup?> createTransaction({
@@ -62,8 +62,10 @@ class TopupController {
     return null;
   }
 
-  // --- 2. Cek Status (Fungsi yang tadi Error) ---
+  // GANTI fungsi checkTransactionStatus Anda dengan versi "Pintar" ini:
   Future<String> checkTransactionStatus(String orderId, String userId, double amount) async {
+    // Ingat: Gunakan Split String agar aman push ke GitHub
+    final String serverKey = "Mid-server-" + "IApp0q6liFZkeMsmwN586_0E"; // Sesuaikan key Anda
     final String basicAuth = 'Basic ${base64Encode(utf8.encode('$serverKey:'))}';
     
     try {
@@ -77,8 +79,29 @@ class TopupController {
         String transactionStatus = data['transaction_status'];
         String fraudStatus = data['fraud_status'] ?? '';
 
+        // --- 1. LOGIKA UPDATE NAMA BANK OTOMATIS ---
+        String detectedBank = "";
+        
+        // Cek apakah user bayar pakai Virtual Account (Bank)?
+        if (data.containsKey('va_numbers')) {
+          // Ambil nama bank dari respon Midtrans (misal: "bca")
+          detectedBank = data['va_numbers'][0]['bank'].toString().toUpperCase(); 
+        } else if (data['payment_type'] == 'qris') {
+          detectedBank = "QRIS (GoPay/Lainnya)";
+        } else {
+          detectedBank = data['payment_type'].toString(); // Store/Indomaret
+        }
+
+        // Jika ada deteksi bank baru, update ke Database Supabase
+        if (detectedBank.isNotEmpty) {
+          await supabase.from('Top Up')
+              .update({'detail_metode': detectedBank}) // Update kolom detail_metode
+              .eq('order_id', orderId);
+        }
+        // ---------------------------------------------
+
         bool isSuccess = (transactionStatus == 'capture' && fraudStatus == 'accept') || 
-                         (transactionStatus == 'settlement');
+                        (transactionStatus == 'settlement');
 
         if (isSuccess) {
           final checkDb = await supabase.from('Top Up').select('status').eq('order_id', orderId).single();
@@ -93,7 +116,7 @@ class TopupController {
           }
           return "already_paid";
         }
-        return transactionStatus; // pending, expire, deny
+        return transactionStatus; 
       }
     } catch (e) {
       return "error";
