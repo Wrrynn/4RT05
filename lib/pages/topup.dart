@@ -123,7 +123,7 @@ class _TopUpPageState extends State<TopUpPage> {
         
         _optionCard("Transfer Bank", "Virtual Account (BCA, BNI, dll)", Icons.account_balance, "bank"),
         const SizedBox(height: 12),
-        _optionCard("QRIS", "Scan QR Code (Gopay/ShopeePay)", Icons.qr_code_2, "qris"),
+        _optionCard("E-Wallet", "Scan QR Code (Gopay/ShopeePay)", Icons.qr_code_2, "qris"),
         const SizedBox(height: 12),
         _optionCard("Tunai / Cash", "Indomaret / Alfamart", Icons.storefront, "cash"),
       ],

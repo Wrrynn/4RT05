@@ -13,6 +13,7 @@ import 'package:artos/pages/scan.dart';
 import 'package:artos/model/pengguna.dart';
 import 'package:artos/service/db_service.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
+import 'package:artos/widgets/currency.dart';
 
 class Homepage extends StatefulWidget {
   final Pengguna pengguna;
@@ -412,7 +413,7 @@ class _HomepageState extends State<Homepage> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Text(
-                          "Rp. ${_pengguna.saldo}",
+                          "${formatCurrency(_pengguna.saldo)}",
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 24,

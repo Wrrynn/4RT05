@@ -2,11 +2,11 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:artos/widgets/bgPurple.dart';
 import 'package:artos/widgets/glass.dart';
+import 'package:artos/widgets/currency.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../controller/ManajemenCtrl.dart';
 import '../model/kategori.dart';
 import '../model/pengguna.dart';
-import '../model/grup_member.dart';
 
 class ManajemenKeuanganPage extends StatefulWidget {
   const ManajemenKeuanganPage({super.key});
@@ -185,9 +185,9 @@ class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        _buildAccountCard(name: "Akun Utama", amount: _formatCurrency(_saldo)),
+                        _buildAccountCard(name: "Akun Utama", amount: formatCurrency(_saldo)),
                         const SizedBox(height: 10),
-                        _buildAccountCard(name: "Grup", amount: _formatCurrency(_totalKontribusi)),
+                        _buildAccountCard(name: "Grup", amount: formatCurrency(_totalKontribusi)),
                         const SizedBox(height: 24),
 
                         _buildAnggaranHeader(),
@@ -261,7 +261,7 @@ class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
           ),
           const SizedBox(height: 12),
           Text(
-            _formatCurrency(totalDana),
+            formatCurrency(totalDana),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 26,
@@ -343,11 +343,6 @@ class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
     );
   }
 
-  String _formatCurrency(num value) {
-    final s = value.toInt().toString();
-    return 'Rp. ' + s.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.');
-  }
-
   // ---------------- ANGGRAN HEADER (+) ----------------
   Widget _buildAnggaranHeader() {
     return Row(
@@ -423,7 +418,7 @@ class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  "Rp. ${terpakai.toInt()} dari Rp. ${batas.toInt()}",
+                  "${formatCurrency(terpakai)} dari ${formatCurrency(batas)}",
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 13,
