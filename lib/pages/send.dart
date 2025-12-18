@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:artos/widgets/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:artos/widgets/bgPurple.dart';
 import 'package:artos/widgets/glass.dart';
@@ -192,7 +193,7 @@ class _SendMoneyPageState extends State<SendMoneyPage> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Rp. ${_currentSaldo.toInt()}',
+            '${formatCurrency(_currentSaldo)}',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 24,
