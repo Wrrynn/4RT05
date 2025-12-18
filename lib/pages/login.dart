@@ -3,6 +3,7 @@ import 'package:artos/widgets/glass.dart';
 import 'package:artos/pages/register.dart';
 import 'package:artos/pages/homePage.dart';
 import 'package:artos/controller/loginCtrl.dart';
+import 'package:artos/pages/forgot_password.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -150,11 +151,10 @@ class _LoginState extends State<Login> {
                       alignment: Alignment.centerRight,
                       child: GestureDetector(
                         onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                "Navigasi ke halaman Lupa Password",
-                              ),
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ForgotPasswordPage(),
                             ),
                           );
                         },
