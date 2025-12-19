@@ -2,6 +2,11 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:artos/widgets/bgPurple.dart';
 import 'package:artos/widgets/glass.dart';
+import 'package:artos/controller/pembayaranCtrl.dart';
+import 'package:artos/widgets/currency.dart';
+import 'package:artos/service/db_service.dart';
+import 'package:artos/model/pengguna.dart';
+import 'package:artos/model/kategori.dart';
 
 class PaymentPage extends StatefulWidget {
   const PaymentPage({super.key});
@@ -13,23 +18,92 @@ class PaymentPage extends StatefulWidget {
 class _PaymentPageState extends State<PaymentPage> {
   final TextEditingController _vaController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
+  final PaymentController _paymentCtrl = PaymentController();
 
-  final List<String> _categories = [
-    'Tagihan Listrik',
-    'Pulsa / Paket Data',
-    'Langganan (Netflix, Spotify, dll)',
-    'Belanja Online',
-    'Pendidikan',
-    'Lainnya',
-  ];
+  late Pengguna _pengguna;
+  double _currentSaldo = 0.0;
+  bool _loading = true;
+  bool _processing = false;
+  VirtualAccount? _parsedVA;
+  String _vaErrorMsg = '';
 
-  String? _selectedCategory;
+  List<Kategori> _categories = [];
+  Kategori? _selectedCategory;
+
+  Future<void> _loadKategori() async {
+  try {
+    final list = await _paymentCtrl
+        .getKategoriDropdown(_pengguna.idPengguna);
+
+    if (!mounted) return;
+
+    setState(() {
+      _categories = list;
+    });
+  } catch (e) {
+    debugPrint('Gagal load kategori: $e');
+  }
+}
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+    _vaController.addListener(_onVAChanged);
+  }
 
   @override
   void dispose() {
+    _vaController.removeListener(_onVAChanged);
     _vaController.dispose();
     _amountController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final userId = DBService.client.auth.currentUser?.id ?? '';
+      if (userId.isEmpty) {
+        setState(() => _loading = false);
+        return;
+      }
+
+      final res = await DBService.client
+          .from('Pengguna')
+          .select()
+          .eq('id_pengguna', userId)
+          .maybeSingle();
+
+      if (res != null) {
+        final p = Pengguna.fromJson(res as Map<String, dynamic>);
+        setState(() {
+          _pengguna = p;
+          _currentSaldo = p.saldo;
+          _loading = false;
+        });
+
+        await _loadKategori();
+      }
+    } catch (e) {
+      setState(() => _loading = false);
+    }
+  }
+
+  void _onVAChanged() {
+    final vaStr = _vaController.text.trim();
+    if (vaStr.isEmpty) {
+      setState(() {
+        _parsedVA = null;
+        _vaErrorMsg = '';
+      });
+      return;
+    }
+
+    final parsed = _paymentCtrl.parseVA(vaStr);
+    setState(() {
+      _parsedVA = parsed;
+      _vaErrorMsg = parsed == null ? 'VA tidak valid' : '';
+    });
   }
 
   @override
@@ -51,7 +125,6 @@ class _PaymentPageState extends State<PaymentPage> {
                       children: [
                         _buildCurrentBalanceCard(),
                         const SizedBox(height: 24),
-
                         const Text(
                           "Masukkan Nomor VA",
                           style: TextStyle(
@@ -61,13 +134,10 @@ class _PaymentPageState extends State<PaymentPage> {
                           ),
                         ),
                         const SizedBox(height: 10),
-
                         _buildVaField(),
+                        const SizedBox(height: 12),
+                        _buildVAInfoCard(),
                         const SizedBox(height: 18),
-
-                        _buildAmountField(),
-                        const SizedBox(height: 18),
-
                         _buildCategoryDropdown(),
                       ],
                     ),
@@ -83,8 +153,6 @@ class _PaymentPageState extends State<PaymentPage> {
       ),
     );
   }
-
-  // ---------------- APPBAR ----------------
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return PreferredSize(
@@ -117,155 +185,151 @@ class _PaymentPageState extends State<PaymentPage> {
     );
   }
 
-  // ---------------- KARTU SALDO ----------------
+  Widget _buildCurrentBalanceCard() {
+    if (_loading) {
+      return GlassContainer(
+        width: double.infinity,
+        height: 90,
+        borderRadius: BorderRadius.circular(18),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFAC00FF), Color(0xFF3C00FF)],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      );
+    }
 
-Widget _buildCurrentBalanceCard() {
-  return GlassContainer(
-    width: double.infinity,
-    height: 90,
-    borderRadius: BorderRadius.circular(18),
-    gradient: const LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [
-        Color(0xFFAC00FF),
-        Color(0xFF3C00FF),
-      ],
-    ),
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    child: Align(
-      alignment: Alignment.centerLeft,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          Text(
-            "Dana Saat Ini",
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          SizedBox(height: 6),
-          Text(
-            "Rp. 00000000",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-
-  // ---------------- FIELD VA ----------------
-
-  Widget _buildVaField() {
     return GlassContainer(
       width: double.infinity,
-      height: 60,
-      borderRadius: BorderRadius.circular(16),
-      borderColor: Colors.white.withOpacity(0.18),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      gradient: LinearGradient(
-        colors: [
-          Colors.black.withOpacity(0.25),
-          Colors.black.withOpacity(0.10),
-        ],
+      height: 90,
+      borderRadius: BorderRadius.circular(18),
+      gradient: const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
+        colors: [Color(0xFFAC00FF), Color(0xFF3C00FF)],
       ),
-      child: TextField(
-        controller: _vaController,
-        style: const TextStyle(color: Colors.white),
-        keyboardType: TextInputType.number,
-        decoration: const InputDecoration(
-          hintText: "Masukkan Nomor VA",
-          hintStyle: TextStyle(color: Colors.white54),
-          border: InputBorder.none,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              "Dana Saat Ini",
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              formatCurrency(_currentSaldo),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // ---------------- FIELD JUMLAH ----------------
+  Widget _buildVaField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GlassContainer(
+          width: double.infinity,
+          height: 60,
+          borderRadius: BorderRadius.circular(16),
+          borderColor: _vaErrorMsg.isNotEmpty
+              ? Colors.red.withOpacity(0.5)
+              : Colors.white.withOpacity(0.18),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          gradient: LinearGradient(
+            colors: [
+              Colors.black.withOpacity(0.25),
+              Colors.black.withOpacity(0.10),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          child: TextField(
+            controller: _vaController,
+            style: const TextStyle(color: Colors.white),
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              hintText: "Masukkan Nomor VA (16 digit)",
+              hintStyle: TextStyle(color: Colors.white54),
+              border: InputBorder.none,
+            ),
+          ),
+        ),
+        if (_vaErrorMsg.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              _vaErrorMsg,
+              style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+            ),
+          ),
+      ],
+    );
+  }
 
-  Widget _buildAmountField() {
+  Widget _buildVAInfoCard() {
+    if (_parsedVA == null) return const SizedBox.shrink();
+    final va = _parsedVA!;
     return GlassContainer(
       width: double.infinity,
-      height: 130,
       borderRadius: BorderRadius.circular(18),
-      borderColor: Colors.white.withOpacity(0.18),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       gradient: LinearGradient(
-        colors: [
-          Colors.black.withOpacity(0.25),
-          Colors.black.withOpacity(0.10),
-        ],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
+        colors: [
+          const Color(0xFF28D17C).withOpacity(0.2),
+          const Color(0xFF1DD45E).withOpacity(0.2),
+        ],
       ),
+      padding: const EdgeInsets.all(14),
+      borderColor: const Color(0xFF28D17C).withOpacity(0.5),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "Masukkan Jumlah",
-            style: TextStyle(
-              color: Colors.white70,
+          Text(
+            'Merchant: ${va.merchantName}',
+            style: const TextStyle(
+              color: Colors.white,
               fontSize: 14,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const Text(
-                "Rp",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  controller: _amountController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: false,
-                  ),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  cursorColor: Colors.white,
-                  decoration: const InputDecoration(
-                    isCollapsed: true,
-                    border: InputBorder.none,
-                    hintText: "0.00",
-                    hintStyle: TextStyle(
-                      color: Colors.white38,
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          const SizedBox(height: 6),
+          Text(
+            'Bank: ${va.bankName}',
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Jumlah: ${formatCurrency(va.totalAmount)}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
     );
   }
-
-  // ---------------- DROPDOWN KATEGORI ----------------
 
   Widget _buildCategoryDropdown() {
     return GlassContainer(
@@ -284,7 +348,7 @@ Widget _buildCurrentBalanceCard() {
       ),
       child: Center(
         child: DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
+          child: DropdownButton<Kategori>(
             dropdownColor: const Color(0xFF2B0B3A),
             icon: const Icon(
               Icons.keyboard_arrow_down_rounded,
@@ -293,23 +357,15 @@ Widget _buildCurrentBalanceCard() {
             value: _selectedCategory,
             hint: const Text(
               'Kategori',
-              style: TextStyle(
-                color: Colors.white54,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.white54, fontSize: 14),
             ),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-            ),
-            items: _categories
-                .map(
-                  (kategori) => DropdownMenuItem(
-                    value: kategori,
-                    child: Text(kategori),
-                  ),
-                )
-                .toList(),
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+            items: _categories.map((kategori) {
+              return DropdownMenuItem<Kategori>(
+                value: kategori,
+                child: Text(kategori.namaKategori), // ✅ dari model
+              );
+            }).toList(),
             onChanged: (value) {
               setState(() {
                 _selectedCategory = value;
@@ -321,41 +377,91 @@ Widget _buildCurrentBalanceCard() {
     );
   }
 
-  // ---------------- TOMBOL BAYAR ----------------
-
   Widget _buildPayButton() {
+    final isEnabled =
+        _parsedVA != null &&
+        _selectedCategory != null &&
+        !_processing &&
+        !_loading;
+
     return SizedBox(
       width: double.infinity,
       height: 55,
       child: ElevatedButton(
-        onPressed: _onPayPressed,
+        onPressed: isEnabled ? _onPayPressed : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFAC00FF),
+          backgroundColor: isEnabled
+              ? const Color(0xFFAC00FF)
+              : const Color(0xFFAC00FF).withOpacity(0.5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
         ),
-        child: const Text(
-          "Bayar",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+        child: _processing
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : Text(
+                "Bayar",
+                style: TextStyle(
+                  color: isEnabled
+                  ? const Color(0xFFFFFFFF)
+                  : const Color(0xFFFFFFFF).withOpacity(0.001),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
       ),
     );
   }
 
-  void _onPayPressed() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Membayar ${_amountController.text.isEmpty ? "0" : _amountController.text}'
-          ' ke VA ${_vaController.text.isEmpty ? "-" : _vaController.text}'
-          '${_selectedCategory != null ? " (Kategori: $_selectedCategory)" : ""}',
-        ),
-      ),
-    );
+  void _onPayPressed() async {
+    if (_parsedVA == null) {
+      _showToast('VA tidak valid');
+      return;
+    }
+    if (_selectedCategory == null) {
+      _showToast('Pilih kategori terlebih dahulu');
+      return;
+    }
+
+    setState(() => _processing = true);
+
+    try {
+      final result = await _paymentCtrl.processPayment(
+        vaNumber: _vaController.text.trim(),
+        idPengguna: _pengguna.idPengguna,
+        idKategori: _selectedCategory!.idKategori,
+        biayaTransfer: 0.0,
+        deskripsi: 'Pembayaran VA',
+      );
+
+      if (result != null &&
+          !result.startsWith('Error') &&
+          !result.contains('tidak')) {
+        await _loadUserData();
+        _vaController.clear();
+        _amountController.clear();
+        setState(() => _selectedCategory = null);
+        if (mounted) {
+          _showToast('Pembayaran berhasil! ID: $result');
+        }
+      } else {
+        _showToast(result ?? 'Pembayaran gagal');
+      }
+    } catch (e) {
+      _showToast('Error: ${e.toString()}');
+    } finally {
+      setState(() => _processing = false);
+    }
+  }
+
+  void _showToast(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 }

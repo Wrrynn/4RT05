@@ -3,7 +3,9 @@ class Transaksi {
   final String? idTransaksi;        // id_transaksi (PK - UUID)
   final String idPengguna;         // id_pengguna (FK - pengirim, UUID)
   final String idKategori;         // id_kategori (FK, UUID)
-  final String targetPengguna;     // target_pengguna (FK - penerima, UUID)
+  
+  final String? targetPengguna;     // target_pengguna (FK - penerima, UUID)
+  final String? targetMerchant;   // target_merchant (untuk transaksi ke merchant, nullable)
 
   double totalTransaksi;        // total_transaksi
   String deskripsi;             // deskripsi
@@ -17,7 +19,8 @@ class Transaksi {
     this.idTransaksi,
     required this.idPengguna,
     required this.idKategori,
-    required this.targetPengguna,
+    this.targetPengguna,
+    this.targetMerchant,
     required this.totalTransaksi,
     required this.deskripsi,
     required this.metodeTransaksi,
