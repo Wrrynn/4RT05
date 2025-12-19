@@ -6,6 +6,7 @@ import 'package:artos/model/pengguna.dart';
 import 'package:artos/pages/homePage.dart';
 import 'package:artos/model/grup.dart';
 import 'package:artos/service/db_service.dart';
+import 'package:artos/widgets/currency.dart';
 
 class PoolPage extends StatefulWidget {
   const PoolPage({super.key});
@@ -263,7 +264,7 @@ class _PoolPageState extends State<PoolPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            "Rp. $_totalKontribusiSaya",
+            "${formatCurrency(_totalKontribusiSaya)}",
             style: const TextStyle(
               color: Colors.white,
               fontSize: 28,
@@ -287,7 +288,7 @@ class _PoolPageState extends State<PoolPage> {
     required String progressText,
   }) {
     final totalTerkumpul =
-        "Rp. ${grup.totalSaldo.toStringAsFixed(0)}/Rp. ${grup.target.toStringAsFixed(0)}";
+        "${formatCurrency(grup.totalSaldo)}/${formatCurrency(grup.target)}";
     final passMask = grup.passwordGrup.isEmpty ? "-" : "******";
 
     return GestureDetector(
@@ -446,7 +447,7 @@ class _PoolPageState extends State<PoolPage> {
                   ],
                 ),
                 Text(
-                  "Rp. $myContrib",
+                  "${formatCurrency(myContrib)}",
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 14,
@@ -552,7 +553,7 @@ class _PoolPageState extends State<PoolPage> {
                       return _memberRow(
                         name: nama, // ✅ nama asli
                         id: rekening, // ✅ no rekening
-                        amount: "Rp. $kontribusi",
+                        amount: "${formatCurrency(int.tryParse(kontribusi) ?? 0)}", 
                       );
                     }),
 
@@ -574,7 +575,7 @@ class _PoolPageState extends State<PoolPage> {
                             ),
                           ),
                           Text(
-                            "Rp. ${grup.target.toStringAsFixed(0)}",
+                            "${formatCurrency(grup.target)}",
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 14,

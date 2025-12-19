@@ -1,9 +1,12 @@
 class Transaksi {
-  final String? idTransaksi;
-  final String idPengguna;
-  final String idKategori;
-  final String targetPengguna;
-  final String targetMerchant;
+  // ====== ATTRIBUTES ======
+  final String? idTransaksi;        // id_transaksi (PK - UUID)
+  final String idPengguna;         // id_pengguna (FK - pengirim, UUID)
+  final String idKategori;         // id_kategori (FK, UUID)
+
+  // untuk penerima/merchant, nullable karena tidak selalu ada
+  final String? targetPengguna;     // target_pengguna (FK - penerima, UUID)
+  final String? targetMerchant;     // target_merchant (untuk transaksi ke merchant, nullable)
 
   double totalTransaksi;
   String deskripsi;
@@ -16,8 +19,8 @@ class Transaksi {
     this.idTransaksi,
     required this.idPengguna,
     required this.idKategori,
-    required this.targetPengguna,
-    required this.targetMerchant,
+    this.targetPengguna,
+    this.targetMerchant,
     required this.totalTransaksi,
     required this.deskripsi,
     required this.metodeTransaksi,
@@ -31,11 +34,11 @@ class Transaksi {
       idTransaksi: map['id_transaksi']?.toString(),
       idPengguna: map['id_pengguna']?.toString() ?? '',
       idKategori: map['id_kategori']?.toString() ?? '',
-      targetPengguna: map['target_pengguna']?.toString() ?? '',
-      targetMerchant: map['target_merchant']?.toString() ?? '',
+      targetPengguna: map['target_pengguna']?.toString(),
+      targetMerchant: map['target_merchant']?.toString(), // Ambil dari DB
       totalTransaksi: (map['total_transaksi'] is num)
           ? (map['total_transaksi'] as num).toDouble()
-          : double.tryParse(map['total_transaksi']?.toString() ?? '') ?? 0.0,
+          : (double.tryParse(map['total_transaksi']?.toString() ?? '') ?? 0.0),
       deskripsi: map['deskripsi']?.toString() ?? '',
       metodeTransaksi: map['metode_transaksi']?.toString() ?? '',
       status: map['status']?.toString() ?? '',
@@ -43,10 +46,10 @@ class Transaksi {
           ? (map['biaya_transfer'] as num).toDouble()
           : double.tryParse(map['biaya_transfer']?.toString() ?? '') ?? 0.0,
       waktuDibuat: map['waktu_dibuat'] is String
-          ? DateTime.parse(map['waktu_dibuat'])
+          ? (DateTime.tryParse(map['waktu_dibuat']) ?? DateTime.now())
           : (map['waktu_dibuat'] is DateTime
-                ? map['waktu_dibuat']
-                : DateTime.now()),
+              ? map['waktu_dibuat']
+              : DateTime.now()),
     );
   }
 
@@ -55,7 +58,7 @@ class Transaksi {
       'id_pengguna': idPengguna,
       'id_kategori': idKategori,
       'target_pengguna': targetPengguna,
-      'target_merchant': targetMerchant,
+      'target_merchant': targetMerchant, // PASTIKAN INI ADA agar tersimpan di DB
       'total_transaksi': totalTransaksi,
       'deskripsi': deskripsi,
       'metode_transaksi': metodeTransaksi,
@@ -72,8 +75,9 @@ class Transaksi {
 
   bool get isIncome {
     final s = status.toLowerCase();
-    if (s == 'success') return true; // top up
-    if (s == 'sukses') return false; // transfer
+    // Treat both 'success' and 'sukses' as income-like statuses
+    if (s == 'success' || s == 'sukses') return true;
     return false;
   }
 }
+

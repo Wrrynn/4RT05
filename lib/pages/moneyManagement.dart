@@ -2,6 +2,11 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:artos/widgets/bgPurple.dart';
 import 'package:artos/widgets/glass.dart';
+import 'package:artos/widgets/currency.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../controller/ManajemenCtrl.dart';
+import '../model/kategori.dart';
+import '../model/pengguna.dart';
 
 class ManajemenKeuanganPage extends StatefulWidget {
   const ManajemenKeuanganPage({super.key});
@@ -11,11 +16,13 @@ class ManajemenKeuanganPage extends StatefulWidget {
 }
 
 class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
-  // ===== Dummy state kategori (nanti bisa diganti dari DB) =====
-  final List<_KategoriItem> _items = [
-    _KategoriItem(nama: "Makan dan Minuman", batas: 100000, terpakai: 50000),
-    _KategoriItem(nama: "Belanja", batas: 100000, terpakai: 20000),
-  ];
+  final KategoriController _kategoriController = KategoriController();
+
+  // state kategori (diambil dari DB)
+  List<Kategori> _items = [];
+  bool _loading = true;
+  double _saldo = 0.0;
+  int _totalKontribusi = 0;
 
   // controllers untuk popup
   final TextEditingController _namaCtrl = TextEditingController();
@@ -26,6 +33,95 @@ class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
     _namaCtrl.dispose();
     _batasCtrl.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+    _loadAccountData();
+  }
+
+  Future<void> _loadAccountData() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id ?? '';
+    if (userId.isEmpty) return;
+
+    try {
+      // ambil pengguna
+      final userRow = await Supabase.instance.client
+          .from('Pengguna')
+          .select()
+          .eq('id_pengguna', userId)
+          .maybeSingle();
+
+      if (userRow != null) {
+        final p = Pengguna.fromJson(userRow as Map<String, dynamic>);
+        setState(() => _saldo = p.saldo);
+      }
+
+      // ambil semua Grup Member milik user dan jumlahkan kontribusi
+      final gmRes = await Supabase.instance.client
+          .from('Grup Member')
+          .select('jumlah_kontribusi')
+          .eq('id_pengguna', userId);
+
+      int total = 0;
+      if (gmRes is List) {
+        for (final r in gmRes) {
+          final v = (r['jumlah_kontribusi'] ?? 0) as num;
+          total += v.toInt();
+        }
+      }
+      setState(() => _totalKontribusi = total);
+    } catch (_) {
+      // ignore, tetap gunakan default 0
+    }
+  }
+
+  Future<void> _loadCategories() async {
+    setState(() => _loading = true);
+    final userId = Supabase.instance.client.auth.currentUser?.id ?? '';
+    try {
+      final list = await _kategoriController.getKategoriAnggaranDanSync(userId);
+      // pastikan ada kategori 'Lainnya' — jika tidak ada, buat dan letakkan di paling bawah
+      final found = list.any((k) => k.namaKategori.toLowerCase() == 'lainnya');
+      Kategori? lainnya;
+      if (!found) {
+        try {
+          lainnya = await _kategoriController.tambahKategori(
+            idPengguna: userId,
+            namaKategori: 'Lainnya',
+            tipeKategori: 'pengeluaran',
+            batasPengeluaran: 0,
+          );
+        } catch (e) {
+          // kalau gagal buat di server, buat object lokal sebagai fallback
+          lainnya = Kategori(
+            idKategori: 'lainnya-local',
+            idPengguna: userId,
+            namaKategori: 'Lainnya',
+            tipeKategori: 'pengeluaran',
+            batasPengeluaran: 0,
+            totalPengeluaran: 0,
+          );
+        }
+      }
+
+      // Susun ulang list: semua selain 'lainnya' dulu, lalu 'lainnya' di paling bawah
+      final others = list.where((k) => k.namaKategori.toLowerCase() != 'lainnya').toList();
+      if (found) {
+        final theLain = list.firstWhere((k) => k.namaKategori.toLowerCase() == 'lainnya');
+        others.add(theLain);
+      } else if (lainnya != null) {
+        others.add(lainnya);
+      }
+
+      setState(() => _items = others);
+    } catch (e) {
+      _toast('Gagal memuat kategori');
+    } finally {
+      setState(() => _loading = false);
+    }
   }
 
   // ---------------- APPBAR ----------------
@@ -89,16 +185,18 @@ class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        _buildAccountCard(name: "Akun Utama", amount: "Rp. 000000"),
+                        _buildAccountCard(name: "Akun Utama", amount: formatCurrency(_saldo)),
                         const SizedBox(height: 10),
-                        _buildAccountCard(name: "Bank", amount: "Rp. 000000"),
+                        _buildAccountCard(name: "Grup", amount: formatCurrency(_totalKontribusi)),
                         const SizedBox(height: 24),
 
                         _buildAnggaranHeader(),
                         const SizedBox(height: 12),
 
                         // ===== list kategori =====
-                        if (_items.isEmpty)
+                        if (_loading)
+                          const Center(child: CircularProgressIndicator()),
+                        if (!_loading && _items.isEmpty)
                           GlassContainer(
                             width: double.infinity,
                             height: 90,
@@ -134,6 +232,8 @@ class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
 
   // ---------------- TOTAL DANA ----------------
   Widget _buildTotalDanaCard() {
+    final totalDana = _saldo + _totalKontribusi;
+
     return GlassContainer(
       width: double.infinity,
       height: 140,
@@ -148,10 +248,10 @@ class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
         ],
       ),
       borderColor: Colors.white.withOpacity(0.18),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             "Total Dana",
             style: TextStyle(
               color: Colors.white70,
@@ -159,17 +259,17 @@ class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
               fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Text(
-            "Rp. 000000",
-            style: TextStyle(
+            formatCurrency(totalDana),
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 26,
               fontWeight: FontWeight.w800,
             ),
           ),
-          SizedBox(height: 8),
-          Text(
+          const SizedBox(height: 8),
+          const Text(
             "+ 10.5% dari bulan terakhir",
             style: TextStyle(
               color: Color(0xFF28D17C),
@@ -283,8 +383,10 @@ class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
   }
 
   // ---------------- BUDGET CARD ----------------
-  Widget _buildBudgetCard({required _KategoriItem item}) {
-    final progress = item.batas <= 0 ? 0.0 : (item.terpakai / item.batas).clamp(0.0, 1.0);
+  Widget _buildBudgetCard({required Kategori item}) {
+    final batas = item.batasPengeluaran <= 0 ? 0.0 : item.batasPengeluaran;
+    final terpakai = item.totalPengeluaran;
+    final progress = batas <= 0 ? 0.0 : (terpakai / batas).clamp(0.0, 1.0);
 
     return GlassContainer(
       width: double.infinity,
@@ -307,7 +409,7 @@ class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.nama,
+                  item.namaKategori,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 15,
@@ -316,7 +418,7 @@ class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  "Rp. ${item.terpakai} dari Rp. ${item.batas}",
+                  "${formatCurrency(terpakai)} dari ${formatCurrency(batas)}",
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 13,
@@ -371,26 +473,28 @@ class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
                   ),
                 ),
               ),
-              GestureDetector(
-                onTap: () => _showHapusKategoriDialog(item),
-                child: GlassContainer(
-                  width: 32,
-                  height: 32,
-                  borderRadius: BorderRadius.circular(8),
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.red.withOpacity(0.15),
-                      Colors.red.withOpacity(0.05),
-                    ],
-                  ),
-                  borderColor: Colors.red.withOpacity(0.2),
-                  child: const Icon(
-                    Icons.delete_rounded,
-                    color: Colors.redAccent,
-                    size: 16,
+              // sembunyikan tombol hapus untuk kategori 'Lainnya'
+              if (item.namaKategori.toLowerCase() != 'lainnya')
+                GestureDetector(
+                  onTap: () => _showHapusKategoriDialog(item),
+                  child: GlassContainer(
+                    width: 32,
+                    height: 32,
+                    borderRadius: BorderRadius.circular(8),
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.red.withOpacity(0.15),
+                        Colors.red.withOpacity(0.05),
+                      ],
+                    ),
+                    borderColor: Colors.red.withOpacity(0.2),
+                    child: const Icon(
+                      Icons.delete_rounded,
+                      color: Colors.redAccent,
+                      size: 16,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ],
@@ -471,7 +575,7 @@ class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
                 alignment: Alignment.centerRight,
                 child: _pillButton(
                   text: "Tambah",
-                  onTap: () {
+                  onTap: () async {
                     final nama = _namaCtrl.text.trim();
                     final batas = int.tryParse(_batasCtrl.text.trim()) ?? 0;
 
@@ -480,12 +584,21 @@ class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
                       return;
                     }
 
-                    setState(() {
-                      _items.add(_KategoriItem(nama: nama, batas: batas, terpakai: 0));
-                    });
+                    final userId = Supabase.instance.client.auth.currentUser?.id ?? '';
+                    try {
+                      final newKat = await _kategoriController.tambahKategori(
+                        idPengguna: userId,
+                        namaKategori: nama,
+                        tipeKategori: 'pengeluaran',
+                        batasPengeluaran: batas.toDouble(),
+                      );
 
-                    Navigator.pop(context);
-                    _toast("Kategori ditambah");
+                      setState(() => _items.add(newKat));
+                      Navigator.pop(context);
+                      _toast("Kategori ditambah");
+                    } catch (e) {
+                      _toast('Gagal menambah kategori');
+                    }
                   },
                 ),
               ),
@@ -496,9 +609,9 @@ class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
     );
   }
 
-  void _showEditKategoriSheet(_KategoriItem item) {
-    _namaCtrl.text = item.nama;
-    _batasCtrl.text = item.batas.toString();
+  void _showEditKategoriSheet(Kategori item) {
+    _namaCtrl.text = item.namaKategori;
+    _batasCtrl.text = item.batasPengeluaran.toInt().toString();
 
     showModalBottomSheet(
       context: context,
@@ -535,7 +648,7 @@ class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
                 alignment: Alignment.centerRight,
                 child: _pillButton(
                   text: "Ubah",
-                  onTap: () {
+                  onTap: () async {
                     final nama = _namaCtrl.text.trim();
                     final batas = int.tryParse(_batasCtrl.text.trim()) ?? 0;
 
@@ -545,13 +658,18 @@ class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
                     }
 
                     setState(() {
-                      item.nama = nama;
-                      item.batas = batas;
-                      if (item.terpakai > item.batas) item.terpakai = item.batas; // biar aman
+                      item.namaKategori = nama;
+                      item.batasPengeluaran = batas.toDouble();
+                      if (item.totalPengeluaran > item.batasPengeluaran) item.totalPengeluaran = item.batasPengeluaran;
                     });
 
-                    Navigator.pop(context);
-                    _toast("Kategori diubah");
+                    try {
+                      await _kategoriController.editKategori(item);
+                      Navigator.pop(context);
+                      _toast("Kategori diubah");
+                    } catch (e) {
+                      _toast('Gagal mengubah kategori');
+                    }
                   },
                 ),
               ),
@@ -562,7 +680,7 @@ class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
     );
   }
 
-  void _showHapusKategoriDialog(_KategoriItem item) {
+  void _showHapusKategoriDialog(Kategori item) {
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -605,10 +723,15 @@ class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
                     Expanded(
                       child: _outlinePillButton(
                         text: "Ya",
-                        onTap: () {
-                          setState(() => _items.remove(item));
-                          Navigator.pop(context);
-                          _toast("Kategori dihapus");
+                        onTap: () async {
+                          try {
+                            await _kategoriController.hapusKategori(item);
+                            setState(() => _items.remove(item));
+                            Navigator.pop(context);
+                            _toast("Kategori dihapus");
+                          } catch (e) {
+                            _toast('Gagal menghapus kategori');
+                          }
                         },
                       ),
                     ),
