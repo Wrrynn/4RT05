@@ -190,7 +190,7 @@ class _HomepageState extends State<Homepage> {
           .eq('id_pengguna', currentId)
           .maybeSingle();
       if (res != null) {
-        final updated = Pengguna.fromJson(res as Map<String, dynamic>);
+        final updated = Pengguna.fromJson(res);
         setState(() => _pengguna = updated);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Data berhasil diperbarui')),
@@ -413,7 +413,7 @@ class _HomepageState extends State<Homepage> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Text(
-                          "${formatCurrency(_pengguna.saldo)}",
+                          formatCurrency(_pengguna.saldo),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 24,
@@ -455,7 +455,7 @@ class _HomepageState extends State<Homepage> {
                       Text(
                         "Pemasukan",
                           style: TextStyle(
-                          color: const Color(0xB31DD45E),
+                          color: Color(0xB31DD45E),
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
@@ -463,7 +463,7 @@ class _HomepageState extends State<Homepage> {
                       SizedBox(height: 4),
                       Text(
                         "Rp. 000",
-                          style: const TextStyle(
+                          style: TextStyle(
                           color: Colors.white,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
@@ -490,7 +490,7 @@ class _HomepageState extends State<Homepage> {
                       Text(
                         "Pengeluaran",
                         style: TextStyle(
-                          color: const Color(0xB3FF4C4C),
+                          color: Color(0xB3FF4C4C),
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),

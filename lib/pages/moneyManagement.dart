@@ -55,7 +55,7 @@ class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
           .maybeSingle();
 
       if (userRow != null) {
-        final p = Pengguna.fromJson(userRow as Map<String, dynamic>);
+        final p = Pengguna.fromJson(userRow);
         setState(() => _saldo = p.saldo);
       }
 
@@ -66,13 +66,11 @@ class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
           .eq('id_pengguna', userId);
 
       int total = 0;
-      if (gmRes is List) {
-        for (final r in gmRes) {
-          final v = (r['jumlah_kontribusi'] ?? 0) as num;
-          total += v.toInt();
-        }
+      for (final r in gmRes) {
+        final v = (r['jumlah_kontribusi'] ?? 0) as num;
+        total += v.toInt();
       }
-      setState(() => _totalKontribusi = total);
+          setState(() => _totalKontribusi = total);
     } catch (_) {
       // ignore, tetap gunakan default 0
     }

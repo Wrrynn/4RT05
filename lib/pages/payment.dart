@@ -86,7 +86,7 @@ class _PaymentPageState extends State<PaymentPage> {
           .maybeSingle();
 
       if (res != null) {
-        final p = Pengguna.fromJson(res as Map<String, dynamic>);
+        final p = Pengguna.fromJson(res);
         setState(() {
           _pengguna = p;
           _currentSaldo = p.saldo;

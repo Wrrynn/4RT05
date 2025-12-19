@@ -13,7 +13,7 @@ import 'package:artos/widgets/fireflies.dart';
 import 'package:artos/widgets/glass.dart';
 
 class ScanPage extends StatefulWidget {
-  const ScanPage({Key? key}) : super(key: key);
+  const ScanPage({super.key});
 
   @override
   State<ScanPage> createState() => _ScanPageState();

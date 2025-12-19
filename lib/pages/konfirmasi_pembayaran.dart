@@ -208,7 +208,7 @@ class _KonfirmasiPembayaranPageState extends State<KonfirmasiPembayaranPage> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14),
               child: DropdownButtonFormField<String>(
-                value: _kategoriId,
+                initialValue: _kategoriId,
                 dropdownColor: const Color(0xFF1B0B2E),
                 decoration: const InputDecoration(border: InputBorder.none),
                 hint: const Text('Kategori',

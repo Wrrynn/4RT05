@@ -1,7 +1,6 @@
 import 'package:artos/model/transaksi.dart';
 import 'package:artos/model/kategori.dart';
 import 'package:artos/service/db_service.dart';
-import 'package:artos/widgets/currency.dart';
 
 class VirtualAccount {
   static const Map<String, String> bankCodes = {

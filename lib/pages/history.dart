@@ -110,8 +110,7 @@ class _HistoryPageState extends State<HistoryPage> {
                     const Spacer(),
                     IconButton(
                       onPressed: _load,
-                      icon: const Icon(Icons.refresh_rounded,
-                          color: Colors.white70),
+                      icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
                     ),
                   ],
                 ),
@@ -136,8 +135,7 @@ class _HistoryPageState extends State<HistoryPage> {
             elevation: 0,
             centerTitle: true,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white),
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
               onPressed: () => _goToHomepage(context),
             ),
             title: const Text(
@@ -231,7 +229,7 @@ class _HistoryPageState extends State<HistoryPage> {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const BuktiPembayaranPage()),
+              MaterialPageRoute(builder: (_) => BuktiPembayaranPage(data: item)),
             );
           },
         );

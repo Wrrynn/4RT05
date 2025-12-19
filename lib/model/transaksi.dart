@@ -30,6 +30,22 @@ class Transaksi {
   });
 
   factory Transaksi.fromMap(Map<String, dynamic> map) {
+    DateTime parseTime(dynamic v) {
+    if (v == null) return DateTime.fromMillisecondsSinceEpoch(0);
+
+    if (v is DateTime) return v;
+
+    if (v is String) {
+      return DateTime.tryParse(v) ?? DateTime.fromMillisecondsSinceEpoch(0);
+    }
+
+    if (v is num) {
+      final n = v.toInt();
+      return DateTime.fromMillisecondsSinceEpoch(n < 1000000000000 ? n * 1000 : n);
+    }
+
+    return DateTime.fromMillisecondsSinceEpoch(0);
+  }
     return Transaksi(
       idTransaksi: map['id_transaksi']?.toString(),
       idPengguna: map['id_pengguna']?.toString() ?? '',
@@ -45,11 +61,7 @@ class Transaksi {
       biayaTransfer: (map['biaya_transfer'] is num)
           ? (map['biaya_transfer'] as num).toDouble()
           : double.tryParse(map['biaya_transfer']?.toString() ?? '') ?? 0.0,
-      waktuDibuat: map['waktu_dibuat'] is String
-          ? (DateTime.tryParse(map['waktu_dibuat']) ?? DateTime.now())
-          : (map['waktu_dibuat'] is DateTime
-              ? map['waktu_dibuat']
-              : DateTime.now()),
+      waktuDibuat: parseTime(map['waktu_dibuat']),
     );
   }
 
@@ -58,7 +70,7 @@ class Transaksi {
       'id_pengguna': idPengguna,
       'id_kategori': idKategori,
       'target_pengguna': targetPengguna,
-      'target_merchant': targetMerchant, // PASTIKAN INI ADA agar tersimpan di DB
+      'target_merchant': targetMerchant, 
       'total_transaksi': totalTransaksi,
       'deskripsi': deskripsi,
       'metode_transaksi': metodeTransaksi,

@@ -5,7 +5,6 @@ import 'package:artos/model/grup_member.dart';
 
 class PoolController {
   final SupabaseClient _db = DBService.client;
-
   String? get _uid => _db.auth.currentUser?.id;
 
   String _err(dynamic e) {
@@ -14,28 +13,25 @@ class PoolController {
   }
 
   // ============================================================
-  // CREATE GROUP (insert grup + auto join owner)
+  // CREATE GROUP (insert Grup + auto join owner)
   // ============================================================
   Future<Grup> createGroup({
     required String namaGrup,
-    required String passwordGrup,
     required double target,
     required String durasi,
   }) async {
     final uid = _uid;
     if (uid == null) throw Exception("User belum login");
-    if (namaGrup.trim().isEmpty)
+    if (namaGrup.trim().isEmpty) {
       throw Exception("Nama grup tidak boleh kosong");
-    if (passwordGrup.trim().isEmpty)
-      throw Exception("Password grup tidak boleh kosong");
+    }
     if (target <= 0) throw Exception("Target harus lebih dari 0");
     if (durasi.trim().isEmpty) throw Exception("Durasi tidak boleh kosong");
 
     try {
-      final grupDraft = Grup(
+      final draft = Grup(
         idGrup: 'TEMP',
         namaGrup: namaGrup.trim(),
-        passwordGrup: passwordGrup.trim(),
         target: target,
         durasi: durasi.trim(),
         totalSaldo: 0,
@@ -44,7 +40,7 @@ class PoolController {
 
       final grupRow = await _db
           .from('Grup')
-          .insert(grupDraft.toInsertJson())
+          .insert(draft.toInsertJson())
           .select('*')
           .single();
 
@@ -84,41 +80,40 @@ class PoolController {
   }
 
   // ============================================================
-  // GET MEMBERS OF GROUP
+  // GET MEMBERS (buat tampil nama + rekening)
   // ============================================================
   Future<List<Map<String, dynamic>>> getGroupMembers({
-  required String idGrup,
-}) async {
-  try {
-    final res = await _db
-        .from('Grup Member')
-        .select('''
-          jumlah_kontribusi,
-          Pengguna (
-            nama_lengkap,
-            rekening
-          )
-        ''')
-        .eq('id_grup', idGrup)
-        .order('jumlah_kontribusi', ascending: false);
+    required String idGrup,
+  }) async {
+    try {
+      final res = await _db
+          .from('Grup Member')
+          .select('''
+            jumlah_kontribusi,
+            id_pengguna,
+            role,
+            Pengguna (
+              nama_lengkap,
+              rekening
+            )
+          ''')
+          .eq('id_grup', idGrup)
+          .order('jumlah_kontribusi', ascending: false);
 
-    return List<Map<String, dynamic>>.from(res);
-  } catch (_) {
-    return [];
+      return List<Map<String, dynamic>>.from(res);
+    } catch (_) {
+      return [];
+    }
   }
-}
-
 
   // ============================================================
-  // JOIN GROUP
+  // JOIN GROUP (tanpa password)
   // ============================================================
   Future<String?> joinGroup({
     required String idGrup,
     required String idPengguna,
-    String? password,
   }) async {
     try {
-      // sudah join?
       final exists = await _db
           .from('Grup Member')
           .select('id_member')
@@ -127,18 +122,6 @@ class PoolController {
           .maybeSingle();
 
       if (exists != null) return null;
-
-      // cek password kalau diberikan
-      if (password != null) {
-        final g = await _db
-            .from('Grup')
-            .select('password_grup')
-            .eq('id_grup', idGrup)
-            .single();
-
-        final passDB = (g['password_grup'] ?? '') as String;
-        if (passDB != password) return "Password grup salah";
-      }
 
       final memberDraft = GrupMember(
         idMember: 'TEMP',
@@ -156,7 +139,7 @@ class PoolController {
   }
 
   // ============================================================
-  // GET MY CONTRIBUTION IN A GROUP
+  // GET MY CONTRIBUTION
   // ============================================================
   Future<int> getMyContribution({
     required String idGrup,
@@ -177,7 +160,10 @@ class PoolController {
   }
 
   // ============================================================
-  // ADD CONTRIBUTION
+  // ADD CONTRIBUTION:
+  // - saldo Pengguna berkurang
+  // - kontribusi member bertambah
+  // - total_saldo Grup bertambah
   // ============================================================
   Future<String?> addContribution({
     required String idGrup,
@@ -187,7 +173,6 @@ class PoolController {
     if (jumlah <= 0) return "Nominal harus lebih dari 0";
 
     try {
-      // 1) Ambil saldo pengguna
       final userRow = await _db
           .from('Pengguna')
           .select('saldo')
@@ -197,7 +182,6 @@ class PoolController {
       final saldoUser = (userRow['saldo'] as num?)?.toDouble() ?? 0.0;
       if (saldoUser < jumlah) return "Saldo kamu tidak cukup";
 
-      // 2) Ambil data member
       final memberRow = await _db
           .from('Grup Member')
           .select('id_member, jumlah_kontribusi')
@@ -208,7 +192,6 @@ class PoolController {
       final idMember = memberRow['id_member'] as String;
       final kontribusi = (memberRow['jumlah_kontribusi'] as num?)?.toInt() ?? 0;
 
-      // 3) Ambil saldo grup
       final grupRow = await _db
           .from('Grup')
           .select('total_saldo')
@@ -217,23 +200,15 @@ class PoolController {
 
       final saldoGrup = (grupRow['total_saldo'] as num?)?.toDouble() ?? 0.0;
 
-      // =============================
-      // UPDATE DATA
-      // =============================
-
-      // A) Kurangi saldo pengguna
+      // Update berurutan (minimal)
       await _db
           .from('Pengguna')
           .update({'saldo': saldoUser - jumlah})
           .eq('id_pengguna', idPengguna);
-
-      // B) Tambah kontribusi member
       await _db
           .from('Grup Member')
           .update({'jumlah_kontribusi': kontribusi + jumlah})
           .eq('id_member', idMember);
-
-      // C) Tambah saldo grup
       await _db
           .from('Grup')
           .update({'total_saldo': saldoGrup + jumlah})
@@ -246,7 +221,11 @@ class PoolController {
   }
 
   // ============================================================
-  // WITHDRAW (personal, max kontribusi sendiri)
+  // WITHDRAW:
+  // - maksimal sebesar kontribusi sendiri
+  // - saldo Pengguna bertambah
+  // - kontribusi member berkurang
+  // - total_saldo Grup berkurang
   // ============================================================
   Future<String?> withdraw({
     required String idGrup,
@@ -256,7 +235,6 @@ class PoolController {
     if (jumlah <= 0) return "Nominal harus lebih dari 0";
 
     try {
-      // 1) Ambil saldo pengguna
       final userRow = await _db
           .from('Pengguna')
           .select('saldo')
@@ -265,7 +243,6 @@ class PoolController {
 
       final saldoUser = (userRow['saldo'] as num?)?.toDouble() ?? 0.0;
 
-      // 2) Ambil kontribusi member
       final memberRow = await _db
           .from('Grup Member')
           .select('id_member, jumlah_kontribusi')
@@ -276,11 +253,8 @@ class PoolController {
       final idMember = memberRow['id_member'] as String;
       final kontribusi = (memberRow['jumlah_kontribusi'] as num?)?.toInt() ?? 0;
 
-      if (jumlah > kontribusi) {
-        return "Saldo tabungan kamu tidak cukup";
-      }
+      if (jumlah > kontribusi) return "Saldo tabungan kamu tidak cukup";
 
-      // 3) Ambil saldo grup
       final grupRow = await _db
           .from('Grup')
           .select('total_saldo')
@@ -288,28 +262,16 @@ class PoolController {
           .single();
 
       final saldoGrup = (grupRow['total_saldo'] as num?)?.toDouble() ?? 0.0;
+      if (jumlah > saldoGrup) return "Saldo grup tidak cukup";
 
-      if (jumlah > saldoGrup) {
-        return "Saldo grup tidak cukup";
-      }
-
-      // =============================
-      // UPDATE DATA
-      // =============================
-
-      // A) Kurangi kontribusi member
       await _db
           .from('Grup Member')
           .update({'jumlah_kontribusi': kontribusi - jumlah})
           .eq('id_member', idMember);
-
-      // B) Kurangi saldo grup
       await _db
           .from('Grup')
           .update({'total_saldo': saldoGrup - jumlah})
           .eq('id_grup', idGrup);
-
-      // C) Tambah saldo pengguna
       await _db
           .from('Pengguna')
           .update({'saldo': saldoUser + jumlah})
@@ -334,11 +296,9 @@ class PoolController {
 
     final rek = rekening?.trim() ?? "";
     final tel = telepon?.trim() ?? "";
-
     if (rek.isEmpty && tel.isEmpty) return "Isi rekening atau telepon";
 
     try {
-      // cek owner
       final me = await _db
           .from('Grup Member')
           .select('role')
@@ -346,23 +306,17 @@ class PoolController {
           .eq('id_pengguna', uid)
           .single();
 
-      final role = (me['role'] ?? 'member') as String;
-      if (role != 'owner') return "Hanya owner yang bisa mengundang anggota";
-
-      // cari user target dari tabel Pengguna
-      PostgrestFilterBuilder q = _db.from('Pengguna').select('id_pengguna');
-
-      if (rek.isNotEmpty) {
-        q = q.eq('rekening', rek);
-      } else {
-        q = q.eq('telepon', tel);
+      if ((me['role'] ?? 'member') != 'owner') {
+        return "Hanya owner yang bisa mengundang anggota";
       }
+
+      PostgrestFilterBuilder q = _db.from('Pengguna').select('id_pengguna');
+      q = rek.isNotEmpty ? q.eq('rekening', rek) : q.eq('telepon', tel);
 
       final userRow = await q.single();
       final idPenggunaBaru = userRow['id_pengguna'] as String;
 
       if (idPenggunaBaru == uid) return "Tidak bisa invite diri sendiri";
-
       return await joinGroup(idGrup: idGrup, idPengguna: idPenggunaBaru);
     } catch (e) {
       return _err(e);
@@ -381,7 +335,6 @@ class PoolController {
     if (uid == null) return "User belum login";
 
     final d = durasiBaru?.trim();
-
     if (targetBaru == null && (d == null || d.isEmpty)) {
       return "Tidak ada perubahan";
     }
@@ -394,9 +347,9 @@ class PoolController {
           .eq('id_pengguna', uid)
           .single();
 
-      final role = (me['role'] ?? 'member') as String;
-      if (role != 'owner')
+      if ((me['role'] ?? 'member') != 'owner') {
         return "Hanya owner yang bisa mengubah pengaturan grup";
+      }
 
       final update = <String, dynamic>{};
       if (targetBaru != null && targetBaru > 0) update['target'] = targetBaru;
@@ -410,38 +363,49 @@ class PoolController {
   }
 
   // ============================================================
-  // LEAVE GROUP (member only; owner tidak boleh keluar)
+  // LEAVE GROUP:
+  // - Member biasa: boleh keluar
+  // - Owner: boleh keluar hanya jika member lain = 0 -> grup kehapus
   // ============================================================
   Future<String?> leaveGroup({
-    required String idGrup,
-    required String idPengguna,
-  }) async {
-    try {
-      final me = await _db
-          .from('Grup Member')
-          .select('role')
-          .eq('id_grup', idGrup)
-          .eq('id_pengguna', idPengguna)
-          .maybeSingle();
+  required String idGrup,
+  required String idPengguna,
+}) async {
+  try {
+    final me = await _db
+        .from('Grup Member')
+        .select('role, jumlah_kontribusi')
+        .eq('id_grup', idGrup)
+        .eq('id_pengguna', idPengguna)
+        .maybeSingle();
 
-      if (me == null) return "Kamu bukan anggota grup ini";
+    if (me == null) return "Kamu bukan anggota grup ini";
 
-      final role = (me['role'] ?? 'member') as String;
-      if (role == 'owner') {
-        return "Owner tidak bisa keluar. Transfer kepemilikan dulu.";
-      }
+    final role = (me['role'] ?? 'member') as String;
+    final kontribusi = (me['jumlah_kontribusi'] as num?)?.toInt() ?? 0;
 
-      await _db
-          .from('Grup Member')
-          .delete()
-          .eq('id_grup', idGrup)
-          .eq('id_pengguna', idPengguna);
-
-      return null;
-    } catch (e) {
-      return _err(e);
+    // ✅ kalau masih ada uang, wajib tarik dulu
+    if (kontribusi > 0) {
+      return "Kamu masih punya kontribusi $kontribusi. Tarik dulu sampai 0 sebelum keluar.";
     }
+
+    // owner jangan lewat sini (owner pakai deleteGroupIfOwnerAlone)
+    if (role == 'owner') {
+      return "Owner tidak bisa keluar lewat tombol ini.";
+    }
+
+    await _db
+        .from('Grup Member')
+        .delete()
+        .eq('id_grup', idGrup)
+        .eq('id_pengguna', idPengguna);
+
+    return null;
+  } catch (e) {
+    return _err(e);
   }
+}
+
 
   Future<bool> isOwner({
     required String idGrup,
@@ -458,6 +422,68 @@ class PoolController {
       return (row['role'] ?? 'member') == 'owner';
     } catch (_) {
       return false;
+    }
+  }
+
+  // ============================================================
+  // DELETE GROUP (owner only, only if owner is alone)
+  // owner boleh hapus grup kalau member cuma dia sendiri
+  // ============================================================
+  Future<String?> deleteGroupIfOwnerAlone({
+    required String idGrup,
+    required String idOwner,
+  }) async {
+    try {
+      // 1) pastikan owner + ambil kontribusi owner
+      final me = await _db
+          .from('Grup Member')
+          .select('role, jumlah_kontribusi')
+          .eq('id_grup', idGrup)
+          .eq('id_pengguna', idOwner)
+          .maybeSingle();
+
+      if (me == null) return "Kamu bukan anggota grup ini";
+
+      final role = (me['role'] ?? 'member') as String;
+      final ownerKontribusi = (me['jumlah_kontribusi'] as num?)?.toInt() ?? 0;
+
+      if (role != 'owner') return "Hanya owner yang bisa menghapus grup";
+
+      // 2) cek total member (harus cuma owner)
+      final members = await _db
+          .from('Grup Member')
+          .select('id_member')
+          .eq('id_grup', idGrup);
+
+      final totalMember = (members as List).length;
+      if (totalMember > 1) {
+        return "Tidak bisa hapus grup: masih ada anggota lain";
+      }
+
+      // 3) cek saldo grup harus 0
+      final grupRow = await _db
+          .from('Grup')
+          .select('total_saldo')
+          .eq('id_grup', idGrup)
+          .single();
+
+      final totalSaldo = (grupRow['total_saldo'] as num?)?.toDouble() ?? 0.0;
+      if (totalSaldo > 0) {
+        return "Tidak bisa hapus grup: masih ada saldo ${totalSaldo.toInt()}. Tarik dulu sampai 0.";
+      }
+
+      // 4) cek kontribusi owner harus 0 juga
+      if (ownerKontribusi > 0) {
+        return "Tidak bisa hapus grup: kontribusi owner masih $ownerKontribusi. Tarik dulu sampai 0.";
+      }
+
+      // 5) hapus member + grup
+      await _db.from('Grup Member').delete().eq('id_grup', idGrup);
+      await _db.from('Grup').delete().eq('id_grup', idGrup);
+
+      return null;
+    } catch (e) {
+      return _err(e);
     }
   }
 }
