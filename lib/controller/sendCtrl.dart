@@ -177,6 +177,7 @@ class SendController {
       idPengguna: pengirimId,
       idKategori: kategoriId,
       targetPengguna: penerima.idPengguna,
+      targetMerchant: '',
       totalTransaksi: nominal,
       deskripsi: deskripsi,
       metodeTransaksi: metodeTransaksi,

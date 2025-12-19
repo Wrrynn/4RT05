@@ -11,7 +11,7 @@ class CurrencyText extends StatelessWidget {
   final String symbol;
   final TextAlign? textAlign;
 
-  const CurrencyText({Key? key, required this.value, this.style, this.symbol = 'Rp. ', this.textAlign}) : super(key: key);
+  const CurrencyText({super.key, required this.value, this.style, this.symbol = 'Rp. ', this.textAlign});
 
   @override
   Widget build(BuildContext context) {

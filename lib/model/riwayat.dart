@@ -1,30 +1,30 @@
-import 'transaksi.dart'; // pastikan file Transaksi.dart sudah ada di folder yang sama
-
 class Riwayat {
-  // Atribut privat (UUIDs as strings)
-  final String _idRiwayat;
-  final String _idPengguna;
-  final String _idTransaksi;
-  String _idTopUp;
+  final String idPengguna;
+  final String? idTransaksi; 
+  final String? idTopUp;     
 
-  // Constructor
   Riwayat({
-    required String idRiwayat,
-    required String idPengguna,
-    required String idTransaksi,
-    required String idTopUp,
-  })  : _idRiwayat = idRiwayat,
-        _idPengguna = idPengguna,
-        _idTransaksi = idTransaksi,
-        _idTopUp = idTopUp;
+    required this.idPengguna,
+    this.idTransaksi,
+    this.idTopUp,
+  });
 
-  // Getter dan Setter
-  String get idRiwayat => _idRiwayat;
+  Map<String, dynamic> toJson() {
+    return {
+      'id_pengguna': idPengguna,
+      'id_transaksi': idTransaksi,
+      'id_topup': idTopUp,
+    };
+  }
 
-  String get idPengguna => _idPengguna;
+  factory Riwayat.fromJson(Map<String, dynamic> json) {
+    return Riwayat(
+      idPengguna: json['id_pengguna'] as String,
+      idTransaksi: json['id_transaksi'] as String?,
+      idTopUp: json['id_topup'] as String?,
+    );
+  }
 
-  String get idTransaksi => _idTransaksi;
-
-  String get idTopUp => _idTopUp;
-  set idTopUp(String value) => _idTopUp = value;
+  bool get isTransaksi => idTransaksi != null;
+  bool get isTopUp => idTopUp != null;
 }

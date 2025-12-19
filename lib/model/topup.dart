@@ -1,13 +1,12 @@
 class Topup {
-  // Kita gunakan String agar aman dari error Supabase BigInt
-  final String? idTopUp; 
-  
+  final String? idTopUp;
   final String idPenggunaTopup;
   final double jumlah;
   final String metode;
   final String detailMetode;
-  final String? orderId;    
+  final String? orderId;
   final String? redirectUrl;
+  final DateTime waktuTopup;
   String status;
 
   Topup({
@@ -19,26 +18,37 @@ class Topup {
     this.orderId,
     this.redirectUrl,
     required this.status,
-  });
+    DateTime? waktuTopup,
+  }) : waktuTopup = waktuTopup ?? DateTime.fromMillisecondsSinceEpoch(0);
 
   factory Topup.fromMap(Map<String, dynamic> map) {
+    DateTime parseTime(dynamic v) {
+      if (v == null) return DateTime.fromMillisecondsSinceEpoch(0);
+      if (v is DateTime) return v;
+      if (v is String) {
+        return DateTime.tryParse(v) ?? DateTime.fromMillisecondsSinceEpoch(0);
+      }
+      if (v is num) {
+        final n = v.toInt();
+        return DateTime.fromMillisecondsSinceEpoch(
+          n < 1000000000000 ? n * 1000 : n,
+        );
+      }
+      return DateTime.fromMillisecondsSinceEpoch(0);
+    }
+
     return Topup(
-      // ✅ KUNCI PERBAIKAN: 
-      // Apapun tipe data aslinya (int/string), kita paksa jadi String.
-      idTopUp: map['id_topup']?.toString(), 
-      
+      idTopUp: map['id_topup']?.toString(),
       idPenggunaTopup: map['id_pengguna_topup'].toString(),
-      
-      // Safety untuk jumlah (mengatasi int vs double)
-      jumlah: (map['jumlah'] is int) 
-          ? (map['jumlah'] as int).toDouble() 
+      jumlah: (map['jumlah'] is int)
+          ? (map['jumlah'] as int).toDouble()
           : double.tryParse(map['jumlah'].toString()) ?? 0.0,
-          
       metode: map['metode']?.toString() ?? '',
       detailMetode: map['detail_metode']?.toString() ?? '',
       orderId: map['order_id']?.toString(),
       redirectUrl: map['payment_code']?.toString(),
       status: map['status']?.toString() ?? 'pending',
+      waktuTopup: parseTime(map['waktu_dibuat']), 
     );
   }
 }

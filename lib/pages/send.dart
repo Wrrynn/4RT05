@@ -193,7 +193,7 @@ class _SendMoneyPageState extends State<SendMoneyPage> {
           ),
           const SizedBox(height: 6),
           Text(
-            '${formatCurrency(_currentSaldo)}',
+            formatCurrency(_currentSaldo),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 24,

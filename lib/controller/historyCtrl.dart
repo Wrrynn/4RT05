@@ -1,0 +1,162 @@
+import 'package:artos/service/db_service.dart';
+import 'package:artos/model/transaksi.dart';
+import 'package:artos/model/topup.dart';
+
+class HistoryController {
+  final supabase = DBService.client;
+
+  static const String tableTransaksi = 'Transaksi';
+  static const String tableTopup = 'Top Up';
+  static const String tablePengguna = 'Pengguna';
+
+  Future<List<Map<String, dynamic>>> getHistory(String uid) async {
+    final List<Map<String, dynamic>> items = [];
+    final Map<String, String> namaCache = {};
+
+    // ========= 1) TRANSAKSI =========
+    try {
+      final trxRes = await supabase
+          .from(tableTransaksi)
+          .select()
+          .eq('id_pengguna', uid)
+          .order('waktu_dibuat', ascending: false);
+
+      final transaksiList = (trxRes as List)
+          .map((e) => Transaksi.fromMap(e as Map<String, dynamic>))
+          .toList();
+
+      for (final t in transaksiList) {
+        final title = await _resolveTransaksiTitle(t, namaCache);
+        final dt = _safeDt(t.waktuDibuat);
+
+        items.add({
+          'type': 'transfer',
+
+          // list
+          'title': title,
+          'subtitle': t.metodeTransaksi, // ✅ metode saja
+          'amount': '-Rp. ${_formatRupiah(t.totalTransaksi)}',
+          'isIncome': false,
+
+          // receipt
+          'metode': t.metodeTransaksi,
+          'status': t.status,
+          'id_transaksi': t.idTransaksi ?? '-', // ✅ sumber utama
+          'tanggal': dt,
+          'jumlah': t.totalTransaksi,
+          'biaya': t.biayaTransfer,
+          'total': t.totalTransaksi + t.biayaTransfer,
+          'dari': 'Anda',
+          'ke': title,
+
+          '_ts': dt,
+        });
+      }
+    } catch (e) {
+      print('History transaksi error: $e');
+    }
+
+    // ========= 2) TOP UP =========
+    try {
+      final topRes = await supabase
+          .from(tableTopup)
+          .select()
+          .eq('id_pengguna_topup', uid)
+          .order('waktu_dibuat', ascending: false);
+
+      final topupList = (topRes as List)
+          .map((e) => Topup.fromMap(e as Map<String, dynamic>))
+          .toList();
+
+      for (final tp in topupList) {
+        final dt = _safeDt(tp.waktuTopup);
+
+        items.add({
+          'type': 'topup',
+
+          // list
+          'title': 'Top Up',
+          'subtitle': tp.detailMetode, // ✅ metode saja
+          'amount': '+Rp. ${_formatRupiah(tp.jumlah)}',
+          'isIncome': true,
+
+          // receipt
+          'metode': tp.detailMetode,
+          'status': tp.status,
+          'id_transaksi': tp.idTopUp ?? (tp.orderId ?? '-'),
+          'order_id': tp.orderId,
+          'id_topup': tp.idTopUp,
+          'tanggal': dt,
+          'jumlah': tp.jumlah,
+          'biaya': 0.0,
+          'total': tp.jumlah,
+          'dari': 'Anda',
+          'ke': 'Saldo',
+
+          '_ts': dt,
+        });
+      }
+    } catch (e) {
+      print('History topup error: $e');
+    }
+
+    // ========= 3) SORT =========
+    items.sort((a, b) {
+      final ta = a['_ts'] as DateTime? ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final tb = b['_ts'] as DateTime? ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return tb.compareTo(ta);
+    });
+
+    for (final it in items) {
+      it.remove('_ts');
+    }
+
+    return items;
+  }
+
+  Future<String> _resolveTransaksiTitle(
+    Transaksi t,
+    Map<String, String> namaCache,
+  ) async {
+    final merchant = (t.targetMerchant ?? '').trim();
+    if (merchant.isNotEmpty) return merchant;
+
+    final targetUid = (t.targetPengguna ?? '').trim();
+    if (targetUid.isEmpty) return 'Transfer';
+
+    if (namaCache.containsKey(targetUid)) return namaCache[targetUid]!;
+
+    try {
+      final res = await supabase
+          .from(tablePengguna)
+          .select('nama_lengkap')
+          .eq('id_pengguna', targetUid)
+          .maybeSingle();
+
+      if (res == null) return 'Transfer';
+
+      final nama = (res['nama_lengkap'] ?? '').toString().trim();
+      if (nama.isEmpty) return 'Transfer';
+
+      namaCache[targetUid] = nama;
+      return nama;
+    } catch (e) {
+      print('Resolve nama error: $e');
+      return 'Transfer';
+    }
+  }
+
+  DateTime _safeDt(DateTime? dt) {
+    if (dt == null) return DateTime.fromMillisecondsSinceEpoch(0);
+    if (dt.year < 1971) return DateTime.fromMillisecondsSinceEpoch(0);
+    return dt;
+  }
+
+  String _formatRupiah(double value) {
+    final s = value.toStringAsFixed(0);
+    return s.replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]}.',
+    );
+  }
+}
