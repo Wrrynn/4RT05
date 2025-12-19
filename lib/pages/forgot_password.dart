@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:artos/widgets/glass.dart';
+import 'package:artos/controller/resetPassCtrl.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -11,6 +12,8 @@ class ForgotPasswordPage extends StatefulWidget {
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   bool _obscureNew = true;
   bool _obscureConfirm = true;
+
+  final ForgotPasswordController _controller = ForgotPasswordController();
 
   final _emailCtrl = TextEditingController();
   final _telpCtrl = TextEditingController();
@@ -58,39 +61,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           style: const TextStyle(fontSize: 18, color: Colors.white),
         ),
       ),
-    );
-  }
-
-  void _handleUbah() {
-    final email = _emailCtrl.text.trim();
-    final telp = _telpCtrl.text.trim();
-    final newPass = _newPassCtrl.text;
-    final confirm = _confirmPassCtrl.text;
-
-    if (email.isEmpty || telp.isEmpty || newPass.isEmpty || confirm.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Lengkapi semua field dulu ya.")),
-      );
-      return;
-    }
-
-    if (newPass.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Password minimal 6 karakter.")),
-      );
-      return;
-    }
-
-    if (newPass != confirm) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Confirm password tidak sama.")),
-      );
-      return;
-    }
-
-    // TODO: sambungkan ke controller (supabase update password / reset flow)
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Berhasil (dummy). Tinggal sambung DB.")),
     );
   }
 
@@ -190,7 +160,15 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
                     const SizedBox(height: 26),
 
-                    _buildButton(text: "Ubah", onPressed: _handleUbah),
+                    _buildButton(text: "Ubah", onPressed: () {
+                      _controller.handleUbah(
+                        context: context,
+                        email: _emailCtrl.text,
+                        telepon: _telpCtrl.text,
+                        newPassword: _newPassCtrl.text,
+                        confirmPassword: _confirmPassCtrl.text,
+                      );
+                    }),
 
                     const SizedBox(height: 12),
 

@@ -1,7 +1,6 @@
 import 'package:artos/model/transaksi.dart';
 import 'package:artos/model/kategori.dart';
 import 'package:artos/service/db_service.dart';
-import 'package:artos/widgets/currency.dart';
 
 class VirtualAccount {
   static const Map<String, String> bankCodes = {
@@ -14,7 +13,10 @@ class VirtualAccount {
   static const Map<String, String> merchantCodes = {
     '01': 'Toko Buah',
     '02': 'Burger Mountain',
-    '03': 'Pomodoro',
+    '03': 'Podomoro',
+    '04': 'warung Nasi Bu Yuyun',
+    '05': 'Paylater parhan nuggak 3 bln',
+    '06': 'Warung Erpan',
   };
 
   final String vaCode;       // 2 digit (99)

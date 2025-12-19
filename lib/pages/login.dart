@@ -172,29 +172,40 @@ class _LoginState extends State<Login> {
 
                     // 🔹 Tombol Login
                     buildLoginButton(() async {
-                      final pengguna = await _loginCtrl.login(
-                        _emailCtrl.text,
-                        _passCtrl.text,
+                      FocusScope.of(context).unfocus(); // tutup keyboard
+
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (_) =>
+                            const Center(child: CircularProgressIndicator()),
                       );
 
-                      if (pengguna == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Email atau password salah"),
+                      try {
+                        final pengguna = await _loginCtrl.login(
+                          _emailCtrl.text,
+                          _passCtrl.text,
+                        );
+
+                        Navigator.pop(context); // tutup loading
+
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => Homepage(pengguna: pengguna!),
                           ),
                         );
-                        return;
-                      }
+                      } catch (e) {
+                        Navigator.pop(context); // tutup loading
 
-                      // ✔ Login Berhasil → Pindah ke Homepage
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => Homepage(
-                            pengguna: pengguna, // <-- kirim data user
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              e.toString().replaceAll('Exception: ', ''),
+                            ),
                           ),
-                        ),
-                      );
+                        );
+                      }
                     }),
 
                     const SizedBox(height: 10),

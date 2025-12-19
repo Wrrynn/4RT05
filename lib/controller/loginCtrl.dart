@@ -5,9 +5,10 @@ import 'package:artos/model/pengguna.dart';
 class LoginController {
   final supabase = DBService.client;
 
-  Future<Pengguna?> login(String email, String password) async {
+  /// Login user dan cek status verifikasi
+  /// Mengembalikan Pengguna jika sukses, atau melempar Exception jika gagal
+  Future<Pengguna> login(String email, String password) async {
     try {
-      // 1️⃣ Login via Supabase Auth
       final response = await supabase.auth.signInWithPassword(
         email: email.trim(),
         password: password.trim(),
@@ -16,10 +17,13 @@ class LoginController {
       final user = response.user;
 
       if (user == null) {
-        return null; // Gagal login
+        throw Exception("Email atau password salah.");
       }
 
-      // 2️⃣ Ambil data pengguna dari tabel berdasarkan UID
+      if (user.emailConfirmedAt == null) {
+        throw Exception("Akun belum diverifikasi. Silakan cek email Anda.");
+      }
+
       final data = await supabase
           .from('Pengguna')
           .select()
@@ -27,18 +31,18 @@ class LoginController {
           .maybeSingle();
 
       if (data == null) {
-        return null; // Data pengguna tidak ditemukan
+        throw Exception("Akun belum terdaftar. Silakan registrasi.");
       }
 
-      // 3️⃣ Convert JSON → Model Pengguna
-      final pengguna = Pengguna.fromJson(data);
-
-      return pengguna; // sukses
-
-    } on AuthException catch (_) {
-      return null; // Email atau password salah
-    } catch (_) {
-      return null; // Error lain
+      return Pengguna.fromJson(data);
+    } on AuthException catch (e) {
+      // Supabase sengaja menyamarkan error
+      if (e.message.toLowerCase().contains('invalid login')) {
+        throw Exception(
+          "Email atau password salah. Atau akun belum diverifikasi.",
+        );
+      }
+      throw Exception(e.message);
     }
   }
 }
