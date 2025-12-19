@@ -159,4 +159,59 @@ class HistoryController {
       (Match m) => '${m[1]}.',
     );
   }
+
+  // historyCtrl.dart
+
+  Future<Map<String, dynamic>> getMonthlyReportData(String uid, DateTime month) async {
+    double totalIn = 0;
+    double totalOut = 0;
+    Map<String, double> expenseCatData = {}; 
+    Map<String, double> incomeCatData = {};  
+
+    try {
+      final start = DateTime(month.year, month.month, 1).toIso8601String();
+      final end = DateTime(month.year, month.month + 1, 0, 23, 59, 59).toIso8601String();
+
+      // 1. Ambil Pengeluaran (Tabel Transaksi)
+      final trxRes = await supabase
+          .from(tableTransaksi)
+          .select('total_transaksi, Kategori(nama_kategori)') 
+          .eq('id_pengguna', uid)
+          .gte('waktu_dibuat', start)
+          .lte('waktu_dibuat', end);
+
+      for (var t in (trxRes as List)) {
+        double val = (t['total_transaksi'] is num) ? (t['total_transaksi'] as num).toDouble() : 0.0;
+        totalOut += val;
+        final catName = t['Kategori']?['nama_kategori']?.toString() ?? 'Lainnya';
+        expenseCatData[catName] = (expenseCatData[catName] ?? 0) + val;
+      }
+
+      // 2. Ambil Pemasukan (Tabel Top Up) - PERBAIKAN inFilter
+      final topRes = await supabase
+          .from(tableTopup)
+          .select()
+          .eq('id_pengguna_topup', uid)
+          .inFilter('status', ['settlement', 'success', 'sukses', 'sukSses']) // Menggunakan inFilter
+          .gte('waktu_dibuat', start)
+          .lte('waktu_dibuat', end);
+
+      for (var tp in (topRes as List)) {
+        final topupItem = Topup.fromMap(tp as Map<String, dynamic>);
+        totalIn += topupItem.jumlah;
+        String method = topupItem.detailMetode.isEmpty ? "Lainnya" : topupItem.detailMetode;
+        incomeCatData[method] = (incomeCatData[method] ?? 0) + topupItem.jumlah;
+      }
+
+    } catch (e) {
+      print('Error report: $e');
+    }
+
+    return {
+      'pemasukan': totalIn,
+      'pengeluaran': totalOut,
+      'expense_categories': expenseCatData,
+      'income_categories': incomeCatData,
+    };
+  }
 }

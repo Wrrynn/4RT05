@@ -106,7 +106,7 @@ class TopupController {
         if (isSuccess) {
           final checkDb = await supabase.from('Top Up').select('status').eq('order_id', orderId).single();
           if (checkDb['status'] != 'sukses') {
-            await supabase.from('Top Up').update({'status': 'sukSses'}).eq('order_id', orderId);
+            await supabase.from('Top Up').update({'status': 'sukses'}).eq('order_id', orderId);
             
             final user = await supabase.from('Pengguna').select('saldo').eq('id_pengguna', userId).single();
             double oldSaldo = (user['saldo'] ?? 0).toDouble();
