@@ -332,48 +332,44 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   Widget _buildCategoryDropdown() {
-    return GlassContainer(
-      width: double.infinity,
-      height: 60,
-      borderRadius: BorderRadius.circular(16),
-      borderColor: Colors.white.withOpacity(0.18),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      gradient: LinearGradient(
-        colors: [
-          Colors.black.withOpacity(0.25),
-          Colors.black.withOpacity(0.10),
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      child: Center(
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<Kategori>(
-            dropdownColor: const Color(0xFF2B0B3A),
-            icon: const Icon(
-              Icons.keyboard_arrow_down_rounded,
-              color: Colors.white,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Pilih Kategori Transaksi",
+          style: TextStyle(color: Colors.white70, fontSize: 14),
+        ),
+        const SizedBox(height: 8),
+        GlassContainer(
+          width: double.infinity,
+          height: 60,
+          borderRadius: BorderRadius.circular(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<Kategori>(
+              dropdownColor: const Color(0xFF2B0B3A),
+              isExpanded: true,
+              value: _selectedCategory,
+              hint: const Text(
+                'Pilih Kategori (Belanja, Makan, dll)',
+                style: TextStyle(color: Colors.white54, fontSize: 14),
+              ),
+              items: _categories.map((kategori) {
+                return DropdownMenuItem<Kategori>(
+                  value: kategori,
+                  child: Text(
+                    kategori.namaKategori, // Menampilkan nama dari database
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() => _selectedCategory = value);
+              },
             ),
-            value: _selectedCategory,
-            hint: const Text(
-              'Kategori',
-              style: TextStyle(color: Colors.white54, fontSize: 14),
-            ),
-            style: const TextStyle(color: Colors.white, fontSize: 14),
-            items: _categories.map((kategori) {
-              return DropdownMenuItem<Kategori>(
-                value: kategori,
-                child: Text(kategori.namaKategori), // ✅ dari model
-              );
-            }).toList(),
-            onChanged: (value) {
-              setState(() {
-                _selectedCategory = value;
-              });
-            },
           ),
         ),
-      ),
+      ],
     );
   }
 

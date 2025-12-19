@@ -35,28 +35,27 @@ class Transaksi {
       idTransaksi: map['id_transaksi']?.toString(),
       idPengguna: map['id_pengguna']?.toString() ?? '',
       idKategori: map['id_kategori']?.toString() ?? '',
-      targetPengguna: map['target_pengguna']?.toString() ?? '',
+      targetPengguna: map['target_pengguna']?.toString(),
+      targetMerchant: map['target_merchant']?.toString(), // Ambil dari DB
       totalTransaksi: (map['total_transaksi'] is num)
           ? (map['total_transaksi'] as num).toDouble()
-          : double.tryParse(map['total_transaksi']?.toString() ?? '') ?? 0.0,
+          : 0.0,
       deskripsi: map['deskripsi']?.toString() ?? '',
       metodeTransaksi: map['metode_transaksi']?.toString() ?? '',
       status: map['status']?.toString() ?? '',
       biayaTransfer: (map['biaya_transfer'] is num)
           ? (map['biaya_transfer'] as num).toDouble()
-          : double.tryParse(map['biaya_transfer']?.toString() ?? '') ?? 0.0,
-      waktuDibuat: map['waktu_dibuat'] is String
-          ? DateTime.parse(map['waktu_dibuat'])
-          : (map['waktu_dibuat'] is DateTime ? map['waktu_dibuat'] : DateTime.now()),
+          : 0.0,
+      waktuDibuat: DateTime.parse(map['waktu_dibuat'] ?? DateTime.now().toIso8601String()),
     );
   }
 
-  // ====== TO DATABASE ======
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{
       'id_pengguna': idPengguna,
       'id_kategori': idKategori,
       'target_pengguna': targetPengguna,
+      'target_merchant': targetMerchant, // PASTIKAN INI ADA agar tersimpan di DB
       'total_transaksi': totalTransaksi,
       'deskripsi': deskripsi,
       'metode_transaksi': metodeTransaksi,
@@ -64,9 +63,7 @@ class Transaksi {
       'biaya_transfer': biayaTransfer,
       'waktu_dibuat': waktuDibuat.toIso8601String(),
     };
-    if (idTransaksi != null && idTransaksi!.isNotEmpty) {
-      map['id_transaksi'] = idTransaksi;
-    }
+    if (idTransaksi != null) map['id_transaksi'] = idTransaksi;
     return map;
   }
 }

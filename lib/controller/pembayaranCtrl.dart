@@ -3,7 +3,6 @@ import 'package:artos/model/kategori.dart';
 import 'package:artos/service/db_service.dart';
 import 'package:artos/widgets/currency.dart';
 
-// ===== VA MODEL =====
 class VirtualAccount {
   static const Map<String, String> bankCodes = {
     '008': 'Mandiri',
@@ -13,84 +12,71 @@ class VirtualAccount {
   };
 
   static const Map<String, String> merchantCodes = {
-    '123': 'Toko Buah',
-    '456': 'Burger Mountain',
-    '789': 'Pomodoro',
+    '01': 'Toko Buah',
+    '02': 'Burger Mountain',
+    '03': 'Pomodoro',
   };
 
-  final String vaCode; // 999
-  final String bankCode; // 008, 014, 009, 002
-  final String merchantCode; // 123, 456, 789
-  final int amount; // 2 digits → multiply by 1000 (10 = 10000)
-  final int expireYear; // 2 digits (30 = 2030)
+  final String vaCode;       // 2 digit (99)
+  final String bankCode;     // 3 digit (014)
+  final String merchantCode; // 2 digit (01)
+  final int totalAmount;     // 4 digit (Langsung nominal, misal 5000)
+  final int expiryMonth;     // 2 digit (MM)
+  final int expiryYear;      // 2 digit (YY)
 
   String get merchantName => merchantCodes[merchantCode] ?? 'Unknown';
   String get bankName => bankCodes[bankCode] ?? 'Unknown';
-  int get totalAmount => amount * 1000;
 
   VirtualAccount({
     required this.vaCode,
     required this.bankCode,
     required this.merchantCode,
-    required this.amount,
-    required this.expireYear,
+    required this.totalAmount,
+    required this.expiryMonth,
+    required this.expiryYear,
   });
+
+  // Logika Cek Expired
+  bool isExpired() {
+    final now = DateTime.now();
+    // Expiry MM/YY dianggap valid sampai akhir bulan tersebut
+    // Misal 12/25 berarti valid sampai 31 Desember 2025 jam 23:59
+    final expiryDate = DateTime(2000 + expiryYear, expiryMonth + 1, 0, 23, 59);
+    return now.isAfter(expiryDate);
+  }
 }
 
 class PaymentController {
-  // ===== BANK CODES =====
-  static const Map<String, String> bankCodes = {
-    '008': 'Mandiri',
-    '014': 'BCA',
-    '009': 'BNI',
-    '002': 'BRI',
-  };
-
-  // ===== MERCHANT CODES =====
-  static const Map<String, String> merchantCodes = {
-    '123': 'Toko Buah',
-    '456': 'Burger Mountain',
-    '789': 'Pomodoro',
-  };
-
-  // ===== PARSE VA FROM STRING =====
-  /// Parse 16-digit VA string to VirtualAccount object
-  /// Format: 999 (3) + 014 (3) + 123 (3) + 10 (2) + 30 (2) = 13 digit
+  // Parsing 15 Digit: 2 + 3 + 2 + 4 + 4 = 15
   VirtualAccount? parseVA(String vaString) {
     final cleaned = vaString.replaceAll(RegExp(r'[^0-9]'), '');
-
-    if (cleaned.length != 13) return null;
+    if (cleaned.length != 15) return null;
 
     try {
-      final vaCode = cleaned.substring(0, 3);
-      final bankCode = cleaned.substring(3, 6);
-      final merchantCode = cleaned.substring(6, 9);
-      final amount = int.parse(cleaned.substring(9, 11));
-      final expireYear = int.parse(cleaned.substring(11, 13));
+      final vaCode = cleaned.substring(0, 2);
+      final bankCode = cleaned.substring(2, 5);
+      final merchantCode = cleaned.substring(5, 7);
+      final amount = int.parse(cleaned.substring(7, 11));
+      final month = int.parse(cleaned.substring(11, 13));
+      final year = int.parse(cleaned.substring(13, 15));
 
-      if (!bankCodes.containsKey(bankCode)) return null;
-      if (!merchantCodes.containsKey(merchantCode)) return null;
+      if (!VirtualAccount.bankCodes.containsKey(bankCode)) return null;
+      if (!VirtualAccount.merchantCodes.containsKey(merchantCode)) return null;
+      if (month < 1 || month > 12) return null;
 
       return VirtualAccount(
         vaCode: vaCode,
         bankCode: bankCode,
         merchantCode: merchantCode,
-        amount: amount,
-        expireYear: expireYear,
+        totalAmount: amount*1000,
+        expiryMonth: month,
+        expiryYear: year,
       );
     } catch (_) {
       return null;
     }
   }
 
-  // ===== VALIDATE VA =====
-  bool isValidVA(String vaString) {
-    return parseVA(vaString) != null;
-  }
-
-  // ===== PROCESS PAYMENT =====
-  /// Memproses pembayaran VA
-  /// Mengurangi saldo pengguna dan membuat transaksi baru
   Future<String?> processPayment({
     required String vaNumber,
     required String idPengguna,
@@ -99,124 +85,53 @@ class PaymentController {
     required String deskripsi,
   }) async {
     try {
-      // Parse VA
       final va = parseVA(vaNumber);
-      if (va == null) {
-        return 'VA tidak valid';
+      if (va == null) return 'VA tidak valid';
+
+      // VALIDASI EXPIRED
+      if (va.isExpired()) {
+        return 'Transaksi Gagal: Nomor VA sudah kadaluarsa (Expired)';
       }
 
-      // Fetch user saldo
-      final userRes = await DBService.client
-          .from('Pengguna')
-          .select('saldo')
-          .eq('id_pengguna', idPengguna)
-          .maybeSingle();
-
-      if (userRes == null) {
-        return 'Pengguna tidak ditemukan';
-      }
+      final userRes = await DBService.client.from('Pengguna').select('saldo').eq('id_pengguna', idPengguna).maybeSingle();
+      if (userRes == null) return 'Pengguna tidak ditemukan';
 
       final currentSaldo = (userRes['saldo'] as num).toDouble();
       final totalAmount = va.totalAmount + biayaTransfer;
 
-      // Cek saldo cukup
-      if (currentSaldo < totalAmount) {
-        return 'Saldo tidak cukup. Dibutuhkan Rp ${formatCurrency(totalAmount)} tetapi Anda memiliki Rp ${formatCurrency(currentSaldo)}';
-      }
+      if (currentSaldo < totalAmount) return 'Saldo tidak cukup';
 
-      // Create transaksi object
       final transaksi = Transaksi(
         idPengguna: idPengguna,
         idKategori: idKategori,
-        targetMerchant: va.merchantName, // simpan merchant code sebagai target
+        targetMerchant: va.merchantName, // Simpan Nama Merchant ke Database
         targetPengguna: null,
         totalTransaksi: va.totalAmount.toDouble(),
-        deskripsi: deskripsi.isEmpty
-            ? 'Pembayaran VA ke ${va.merchantName} via ${va.bankName}'
-            : deskripsi,
+        deskripsi: deskripsi.isEmpty ? 'Bayar ${va.merchantName}' : deskripsi,
         metodeTransaksi: 'VA_${va.bankName}',
         status: 'sukses',
         biayaTransfer: biayaTransfer,
         waktuDibuat: DateTime.now(),
       );
 
-      // Insert transaksi ke DB
-      final insertRes = await DBService.client
-          .from('Transaksi')
-          .insert(transaksi.toMap())
-          .select();
+      final insertRes = await DBService.client.from('Transaksi').insert(transaksi.toMap()).select();
+      if (insertRes.isEmpty) return 'Gagal membuat transaksi';
 
-      if (insertRes.isEmpty) {
-        return 'Gagal membuat transaksi';
-      }
+      await DBService.client.from('Pengguna').update({'saldo': currentSaldo - totalAmount}).eq('id_pengguna', idPengguna);
 
-      final idTransaksi = insertRes[0]['id_transaksi'];
-
-      // Update saldo pengguna
-      final newSaldo = currentSaldo - totalAmount;
-      await DBService.client
-          .from('Pengguna')
-          .update({'saldo': newSaldo})
-          .eq('id_pengguna', idPengguna);
-
-      // Return success dengan id transaksi
-      return idTransaksi;
+      return insertRes[0]['id_transaksi'];
     } catch (e) {
       return 'Error: ${e.toString()}';
     }
   }
 
-  // ===== GET MERCHANT INFO =====
-  /// Dapatkan info merchant dari merchant code
-  String getMerchantInfo(String merchantCode) {
-    return merchantCodes[merchantCode] ?? 'Unknown Merchant';
-  }
-
-  // ===== GET BANK INFO =====
-  /// Dapatkan info bank dari bank code
-  String getBankInfo(String bankCode) {
-    return bankCodes[bankCode] ?? 'Unknown Bank';
-  }
-
-  // ===== GENERATE VA DUMMY =====
-  /// Generate VA dummy untuk testing
-  String generateDummyVA({
-    required String bankCode,
-    required String merchantCode,
-    required String userId,
-    required int amountDigits, // 2 digits (10 = 10000)
-    required int expireYear, // 2 digits (30 = 2030)
-  }) {
-    const vaCode = '999';
-    final bank = bankCode.padLeft(3, '0');
-    final merchant = merchantCode.padLeft(3, '0');
-    final user = userId.padLeft(3, '0');
-    final amount = amountDigits.toString().padLeft(2, '0');
-    final expire = expireYear.toString().padLeft(2, '0');
-
-    return '$vaCode$bank$merchant$user$amount$expire';
-  }
-
-  // ===== GET KATEGORI DROPDOWN =====
-  /// Ambil kategori pengeluaran milik user
   Future<List<Kategori>> getKategoriDropdown(String idPengguna) async {
-    try {
-      final res = await DBService.client
-          .from('Kategori') // ⚠️ pastikan lowercase
-          .select()
-          .eq('id_pengguna', idPengguna)
-          .eq('tipe_kategori', 'pengeluaran')
-          .order('nama_kategori');
+    final res = await DBService.client.from('Kategori').select().eq('id_pengguna', idPengguna).order('nama_kategori');
+    return (res as List).map((e) => Kategori.fromMap(e)).toList();
+  }
 
-      if (res is List) {
-        return res
-            .map((e) => Kategori.fromMap(e as Map<String, dynamic>))
-            .toList();
-      }
-
-      return [];
-    } catch (e) {
-      throw Exception('Gagal load kategori: $e');
-    }
+  // Generate VA 15 digit untuk testing
+  String generateDummyVA(String bank, String merchant, String amount, String mm, String yy) {
+    return "99${bank.padLeft(3, '0')}${merchant.padLeft(2, '0')}${amount.padLeft(4, '0')}${mm.padLeft(2, '0')}${yy.padLeft(2, '0')}";
   }
 }
