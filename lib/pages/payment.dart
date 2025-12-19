@@ -15,6 +15,18 @@ class PaymentPage extends StatefulWidget {
   State<PaymentPage> createState() => _PaymentPageState();
 }
 
+class PaymentResult {
+  final bool success;
+  final String message;
+  final String? transactionId;
+
+  PaymentResult({
+    required this.success,
+    required this.message,
+    this.transactionId,
+  });
+}
+
 class _PaymentPageState extends State<PaymentPage> {
   final TextEditingController _vaController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
@@ -31,19 +43,18 @@ class _PaymentPageState extends State<PaymentPage> {
   Kategori? _selectedCategory;
 
   Future<void> _loadKategori() async {
-  try {
-    final list = await _paymentCtrl
-        .getKategoriDropdown(_pengguna.idPengguna);
+    try {
+      final list = await _paymentCtrl.getKategoriDropdown(_pengguna.idPengguna);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      _categories = list;
-    });
-  } catch (e) {
-    debugPrint('Gagal load kategori: $e');
+      setState(() {
+        _categories = list;
+      });
+    } catch (e) {
+      debugPrint('Gagal load kategori: $e');
+    }
   }
-}
 
   @override
   void initState() {
@@ -273,6 +284,7 @@ class _PaymentPageState extends State<PaymentPage> {
             ),
           ),
         ),
+        const SizedBox(height: 10),
         if (_vaErrorMsg.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 6),
@@ -286,50 +298,90 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   Widget _buildVAInfoCard() {
-    if (_parsedVA == null) return const SizedBox.shrink();
-    final va = _parsedVA!;
-    return GlassContainer(
-      width: double.infinity,
-      borderRadius: BorderRadius.circular(18),
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
+  if (_parsedVA == null) return const SizedBox.shrink();
+
+  final va = _parsedVA!;
+  final bool isExpired = va.isExpired();
+  final bool saldoTidakCukup = _currentSaldo < va.totalAmount;
+
+  final bool isError = isExpired || saldoTidakCukup;
+
+  final Color borderColor =
+      isError ? Colors.redAccent : const Color(0xFF28D17C);
+
+  final List<Color> gradientColors = isError
+      ? [
+          Colors.redAccent.withOpacity(0.25),
+          Colors.red.withOpacity(0.15),
+        ]
+      : [
           const Color(0xFF28D17C).withOpacity(0.2),
           const Color(0xFF1DD45E).withOpacity(0.2),
-        ],
-      ),
-      padding: const EdgeInsets.all(14),
-      borderColor: const Color(0xFF28D17C).withOpacity(0.5),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Merchant: ${va.merchantName}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+        ];
+
+  return GlassContainer(
+    width: double.infinity,
+    borderRadius: BorderRadius.circular(18),
+    gradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: gradientColors,
+    ),
+    padding: const EdgeInsets.all(14),
+    borderColor: borderColor.withOpacity(0.6),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Merchant: ${va.merchantName}',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Bank: ${va.bankName}',
+          style: const TextStyle(color: Colors.white70, fontSize: 12),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Jumlah: ${formatCurrency(va.totalAmount)}',
+          style: TextStyle(
+            color: isError ? Colors.redAccent : Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        if (isExpired)
+          const Padding(
+            padding: EdgeInsets.only(top: 6),
+            child: Text(
+              '⚠ Nomor VA sudah kadaluarsa',
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Bank: ${va.bankName}',
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Jumlah: ${formatCurrency(va.totalAmount)}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
+        if (!isExpired && saldoTidakCukup)
+          const Padding(
+            padding: EdgeInsets.only(top: 6),
+            child: Text(
+              '⚠ Saldo tidak mencukupi',
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
-        ],
-      ),
-    );
-  }
+      ],
+    ),
+  );
+}
 
   Widget _buildCategoryDropdown() {
     return Column(
@@ -337,7 +389,11 @@ class _PaymentPageState extends State<PaymentPage> {
       children: [
         const Text(
           "Pilih Kategori Transaksi",
-          style: TextStyle(color: Colors.white70, fontSize: 14),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         const SizedBox(height: 8),
         GlassContainer(
@@ -351,7 +407,7 @@ class _PaymentPageState extends State<PaymentPage> {
               isExpanded: true,
               value: _selectedCategory,
               hint: const Text(
-                'Pilih Kategori (Belanja, Makan, dll)',
+                'Pilih Kategori',
                 style: TextStyle(color: Colors.white54, fontSize: 14),
               ),
               items: _categories.map((kategori) {
@@ -406,8 +462,8 @@ class _PaymentPageState extends State<PaymentPage> {
                 "Bayar",
                 style: TextStyle(
                   color: isEnabled
-                  ? const Color(0xFFFFFFFF)
-                  : const Color(0xFFFFFFFF).withOpacity(0.001),
+                      ? const Color(0xFFFFFFFF)
+                      : const Color(0xFFFFFFFF).withOpacity(0.001),
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                 ),
@@ -428,32 +484,27 @@ class _PaymentPageState extends State<PaymentPage> {
 
     setState(() => _processing = true);
 
-    try {
-      final result = await _paymentCtrl.processPayment(
-        vaNumber: _vaController.text.trim(),
-        idPengguna: _pengguna.idPengguna,
-        idKategori: _selectedCategory!.idKategori,
-        biayaTransfer: 0.0,
-        deskripsi: 'Pembayaran VA',
-      );
+    final result = await _paymentCtrl.processPayment(
+      vaNumber: _vaController.text.trim(),
+      idPengguna: _pengguna.idPengguna,
+      idKategori: _selectedCategory!.idKategori,
+      biayaTransfer: 0.0,
+      deskripsi: 'Pembayaran VA',
+    );
 
-      if (result != null &&
-          !result.startsWith('Error') &&
-          !result.contains('tidak')) {
-        await _loadUserData();
-        _vaController.clear();
-        _amountController.clear();
-        setState(() => _selectedCategory = null);
-        if (mounted) {
-          _showToast('Pembayaran berhasil! ID: $result');
-        }
-      } else {
-        _showToast(result ?? 'Pembayaran gagal');
-      }
-    } catch (e) {
-      _showToast('Error: ${e.toString()}');
-    } finally {
-      setState(() => _processing = false);
+    if (!mounted) return;
+
+    setState(() => _processing = false);
+
+    if (result.success) {
+      await _loadUserData();
+      _vaController.clear();
+      _amountController.clear();
+      setState(() => _selectedCategory = null);
+
+      _showToast('${result.message}\nID: ${result.transactionId}');
+    } else {
+      _showToast(result.message);
     }
   }
 

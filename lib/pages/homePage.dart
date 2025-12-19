@@ -41,7 +41,6 @@ class _HomepageState extends State<Homepage> {
       body: BackgroundApp(
         child: Column(
           children: [
-            const SizedBox(height: 16),
             Expanded(
               child: SafeArea(
                 child: _buildPage(_pageIndex),
@@ -133,6 +132,7 @@ class _HomepageState extends State<Homepage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    const SizedBox(height: 16),
                     buildProfileCard(),
                     const SizedBox(height: 30),
                     buildAksesAplikasi(context),
@@ -444,8 +444,8 @@ class _HomepageState extends State<Homepage> {
                   height: 80,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white.withOpacity(0.2)),
-                    color: Colors.white.withOpacity(0.05),
+                    border: Border.all(color: const Color(0xFF1DD45E).withOpacity(0.5)),
+                    color: Colors.black.withOpacity(0.5),
                   ),
                   padding: const EdgeInsets.all(10),
                   child: const Column(
@@ -455,7 +455,7 @@ class _HomepageState extends State<Homepage> {
                       Text(
                         "Pemasukan",
                           style: TextStyle(
-                          color: Colors.white,
+                          color: const Color(0xB31DD45E),
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
@@ -479,8 +479,8 @@ class _HomepageState extends State<Homepage> {
                   height: 80,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white.withOpacity(0.2)),
-                    color: Colors.white.withOpacity(0.05),
+                    border: Border.all(color: const Color(0xFFFF4C4C).withOpacity(0.5)),
+                    color: Colors.black.withOpacity(0.5),
                   ),
                   padding: const EdgeInsets.all(10),
                   child: const Column(
@@ -490,7 +490,7 @@ class _HomepageState extends State<Homepage> {
                       Text(
                         "Pengeluaran",
                         style: TextStyle(
-                          color: Colors.white,
+                          color: const Color(0xB3FF4C4C),
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),

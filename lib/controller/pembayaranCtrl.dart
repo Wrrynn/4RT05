@@ -46,6 +46,18 @@ class VirtualAccount {
   }
 }
 
+class PaymentResult {
+  final bool success;
+  final String message;
+  final String? transactionId;
+
+  PaymentResult({
+    required this.success,
+    required this.message,
+    this.transactionId,
+  });
+}
+
 class PaymentController {
   // Parsing 15 Digit: 2 + 3 + 2 + 4 + 4 = 15
   VirtualAccount? parseVA(String vaString) {
@@ -77,7 +89,7 @@ class PaymentController {
     }
   }
 
-  Future<String?> processPayment({
+  Future<PaymentResult> processPayment({
     required String vaNumber,
     required String idPengguna,
     required String idKategori,
@@ -86,52 +98,96 @@ class PaymentController {
   }) async {
     try {
       final va = parseVA(vaNumber);
-      if (va == null) return 'VA tidak valid';
-
-      // VALIDASI EXPIRED
-      if (va.isExpired()) {
-        return 'Transaksi Gagal: Nomor VA sudah kadaluarsa (Expired)';
+      if (va == null) {
+        return PaymentResult(
+          success: false,
+          message: 'VA tidak valid',
+        );
       }
 
-      final userRes = await DBService.client.from('Pengguna').select('saldo').eq('id_pengguna', idPengguna).maybeSingle();
-      if (userRes == null) return 'Pengguna tidak ditemukan';
+      // 🔴 VALIDASI EXPIRED
+      if (va.isExpired()) {
+        return PaymentResult(
+          success: false,
+          message: 'Nomor VA sudah kadaluarsa (Expired)',
+        );
+      }
+
+      final userRes = await DBService.client
+          .from('Pengguna')
+          .select('saldo')
+          .eq('id_pengguna', idPengguna)
+          .maybeSingle();
+
+      if (userRes == null) {
+        return PaymentResult(
+          success: false,
+          message: 'Pengguna tidak ditemukan',
+        );
+      }
 
       final currentSaldo = (userRes['saldo'] as num).toDouble();
       final totalAmount = va.totalAmount + biayaTransfer;
 
-      if (currentSaldo < totalAmount) return 'Saldo tidak cukup';
+      if (currentSaldo < totalAmount) {
+        return PaymentResult(
+          success: false,
+          message: 'Saldo tidak cukup',
+        );
+      }
 
       final transaksi = Transaksi(
         idPengguna: idPengguna,
         idKategori: idKategori,
-        targetMerchant: va.merchantName, // Simpan Nama Merchant ke Database
+        targetMerchant: va.merchantName,
         targetPengguna: null,
         totalTransaksi: va.totalAmount.toDouble(),
-        deskripsi: deskripsi.isEmpty ? 'Bayar ${va.merchantName}' : deskripsi,
+        deskripsi: deskripsi.isEmpty
+            ? 'Bayar ${va.merchantName}'
+            : deskripsi,
         metodeTransaksi: 'VA_${va.bankName}',
         status: 'sukses',
         biayaTransfer: biayaTransfer,
         waktuDibuat: DateTime.now(),
       );
 
-      final insertRes = await DBService.client.from('Transaksi').insert(transaksi.toMap()).select();
-      if (insertRes.isEmpty) return 'Gagal membuat transaksi';
+      final insertRes = await DBService.client
+          .from('Transaksi')
+          .insert(transaksi.toMap())
+          .select();
 
-      await DBService.client.from('Pengguna').update({'saldo': currentSaldo - totalAmount}).eq('id_pengguna', idPengguna);
+      if (insertRes.isEmpty) {
+        return PaymentResult(
+          success: false,
+          message: 'Gagal membuat transaksi',
+        );
+      }
 
-      return insertRes[0]['id_transaksi'];
+      await DBService.client
+          .from('Pengguna')
+          .update({'saldo': currentSaldo - totalAmount})
+          .eq('id_pengguna', idPengguna);
+
+      return PaymentResult(
+        success: true,
+        message: 'Pembayaran berhasil',
+        transactionId: insertRes[0]['id_transaksi'],
+      );
     } catch (e) {
-      return 'Error: ${e.toString()}';
+      return PaymentResult(
+        success: false,
+        message: 'Error: ${e.toString()}',
+      );
     }
   }
 
   Future<List<Kategori>> getKategoriDropdown(String idPengguna) async {
-    final res = await DBService.client.from('Kategori').select().eq('id_pengguna', idPengguna).order('nama_kategori');
-    return (res as List).map((e) => Kategori.fromMap(e)).toList();
-  }
+    final res = await DBService.client
+        .from('Kategori')
+        .select()
+        .eq('id_pengguna', idPengguna)
+        .order('nama_kategori');
 
-  // Generate VA 15 digit untuk testing
-  String generateDummyVA(String bank, String merchant, String amount, String mm, String yy) {
-    return "99${bank.padLeft(3, '0')}${merchant.padLeft(2, '0')}${amount.padLeft(4, '0')}${mm.padLeft(2, '0')}${yy.padLeft(2, '0')}";
+    return (res as List).map((e) => Kategori.fromMap(e)).toList();
   }
 }
