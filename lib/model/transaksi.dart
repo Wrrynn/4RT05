@@ -1,23 +1,23 @@
 class Transaksi {
-  // ====== ATTRIBUTES ======
-  final String? idTransaksi;        // id_transaksi (PK - UUID)
-  final String idPengguna;         // id_pengguna (FK - pengirim, UUID)
-  final String idKategori;         // id_kategori (FK, UUID)
-  final String targetPengguna;     // target_pengguna (FK - penerima, UUID)
+  final String? idTransaksi;
+  final String idPengguna;
+  final String idKategori;
+  final String targetPengguna;
+  final String targetMerchant;
 
-  double totalTransaksi;        // total_transaksi
-  String deskripsi;             // deskripsi
-  String metodeTransaksi;       // metode_transaksi
-  String status;                // status
-  double biayaTransfer;         // biaya_transfer
-  DateTime waktuDibuat;         // waktu_dibuat
+  double totalTransaksi;
+  String deskripsi;
+  String metodeTransaksi;
+  String status;
+  double biayaTransfer;
+  DateTime waktuDibuat;
 
-  // ====== CONSTRUCTOR ======
   Transaksi({
     this.idTransaksi,
     required this.idPengguna,
     required this.idKategori,
     required this.targetPengguna,
+    required this.targetMerchant,
     required this.totalTransaksi,
     required this.deskripsi,
     required this.metodeTransaksi,
@@ -26,13 +26,13 @@ class Transaksi {
     required this.waktuDibuat,
   });
 
-  // ====== FROM DATABASE ======
   factory Transaksi.fromMap(Map<String, dynamic> map) {
     return Transaksi(
       idTransaksi: map['id_transaksi']?.toString(),
       idPengguna: map['id_pengguna']?.toString() ?? '',
       idKategori: map['id_kategori']?.toString() ?? '',
       targetPengguna: map['target_pengguna']?.toString() ?? '',
+      targetMerchant: map['target_merchant']?.toString() ?? '',
       totalTransaksi: (map['total_transaksi'] is num)
           ? (map['total_transaksi'] as num).toDouble()
           : double.tryParse(map['total_transaksi']?.toString() ?? '') ?? 0.0,
@@ -44,16 +44,18 @@ class Transaksi {
           : double.tryParse(map['biaya_transfer']?.toString() ?? '') ?? 0.0,
       waktuDibuat: map['waktu_dibuat'] is String
           ? DateTime.parse(map['waktu_dibuat'])
-          : (map['waktu_dibuat'] is DateTime ? map['waktu_dibuat'] : DateTime.now()),
+          : (map['waktu_dibuat'] is DateTime
+                ? map['waktu_dibuat']
+                : DateTime.now()),
     );
   }
 
-  // ====== TO DATABASE ======
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{
       'id_pengguna': idPengguna,
       'id_kategori': idKategori,
       'target_pengguna': targetPengguna,
+      'target_merchant': targetMerchant,
       'total_transaksi': totalTransaksi,
       'deskripsi': deskripsi,
       'metode_transaksi': metodeTransaksi,
@@ -61,9 +63,17 @@ class Transaksi {
       'biaya_transfer': biayaTransfer,
       'waktu_dibuat': waktuDibuat.toIso8601String(),
     };
+
     if (idTransaksi != null && idTransaksi!.isNotEmpty) {
       map['id_transaksi'] = idTransaksi;
     }
     return map;
+  }
+
+  bool get isIncome {
+    final s = status.toLowerCase();
+    if (s == 'success') return true; // top up
+    if (s == 'sukses') return false; // transfer
+    return false;
   }
 }

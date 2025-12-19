@@ -1,16 +1,16 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 import 'package:artos/pages/homePage.dart';
 import 'package:artos/model/pengguna.dart';
 import 'package:artos/service/db_service.dart';
 
-import '../widgets/bgPurple.dart';
-import '../widgets/aurora.dart';
-import '../widgets/fireflies.dart';
-import '../widgets/glass.dart';
+import 'package:artos/widgets/bgPurple.dart';
+import 'package:artos/widgets/aurora.dart';
+import 'package:artos/widgets/fireflies.dart';
+import 'package:artos/widgets/glass.dart';
 
 class ScanPage extends StatefulWidget {
   const ScanPage({Key? key}) : super(key: key);
@@ -20,59 +20,42 @@ class ScanPage extends StatefulWidget {
 }
 
 class _ScanPageState extends State<ScanPage> {
-  final ImagePicker _picker = ImagePicker();
-  XFile? _photo;
+  final MobileScannerController _scannerController =
+      MobileScannerController();
 
-  Future<void> _openCamera() async {
-    try {
-      final XFile? photo = await _picker.pickImage(
-        source: ImageSource.camera,
-        preferredCameraDevice: CameraDevice.rear,
-        imageQuality: 85,
-      );
-      if (photo != null) setState(() => _photo = photo);
-    } catch (e) {
-      // ignore errors for now
-    }
+  bool _hasScanned = false;
+
+  void _onDetect(BarcodeCapture capture) {
+    if (_hasScanned) return;
+
+    final barcode = capture.barcodes.first;
+    final raw = barcode.rawValue;
+
+    if (raw == null || raw.isEmpty) return;
+
+    _hasScanned = true;
+
+    debugPrint('QR RAW VALUE: $raw');
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('QR terbaca')),
+    );
+
+    // NANTI:
+    // - parse QRIS
+    // - navigate ke konfirmasi
   }
 
-  // Helper: fetch current Pengguna and navigate to Homepage
-  Future<void> _goToHomepage() async {
-    final uid = DBService.client.auth.currentUser?.id;
-    if (uid == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Belum login')),
-      );
-      return;
-    }
-
-    try {
-      final res = await DBService.client
-          .from('Pengguna')
-          .select()
-          .eq('id_pengguna', uid)
-          .single();
-
-      final pengguna = Pengguna.fromJson(res);
-
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => Homepage(pengguna: pengguna),
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memuat data pengguna: $e')),
-      );
-    }
+  @override
+  void dispose() {
+    _scannerController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final boxSize = screenWidth * 0.78; // matches mock: big rounded square
+    final boxSize = screenWidth * 0.78;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -88,95 +71,73 @@ class _ScanPageState extends State<ScanPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // ===== HEADER =====
                     Row(
                       children: [
                         GestureDetector(
-                          onTap: _goToHomepage,
-                          child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+                          onTap: () => Navigator.pop(context),
+                          child: const Icon(
+                            Icons.arrow_back_ios_new_rounded,
+                            color: Colors.white,
+                          ),
                         ),
                         const SizedBox(width: 16),
                         const Expanded(
-                          child: Text('Scan QR Code', style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w600)),
+                          child: Text(
+                            'Scan QR Code',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                         IconButton(
-                          onPressed: () {},
-                          icon: const Icon(Icons.flash_on, color: Colors.white),
+                          onPressed: () =>
+                              _scannerController.toggleTorch(),
+                          icon: const Icon(
+                            Icons.flash_on,
+                            color: Colors.white,
+                          ),
                         ),
                       ],
                     ),
 
                     const SizedBox(height: 18),
 
-                    // Scan box
+                    // ===== SCAN BOX =====
                     Center(
                       child: Container(
                         width: boxSize,
                         height: boxSize,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(18),
-                          gradient: const LinearGradient(colors: [Color(0xFF8A2BE2), Color(0xFFDE3AFF)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.45), blurRadius: 20, offset: const Offset(0, 10))],
-                        ),
-                        child: Stack(
-                          children: [
-                            // camera preview or placeholder
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(18),
-                              child: _photo == null
-                                  ? Container(
-                                      color: Colors.transparent,
-                                      child: const Center(
-                                        child: Icon(Icons.camera_alt, color: Colors.white54, size: 48),
-                                      ),
-                                    )
-                                  : Image.file(File(_photo!.path), fit: BoxFit.cover, width: boxSize, height: boxSize),
-                            ),
-
-                            // corner markers
-                            Positioned(
-                              left: 12,
-                              top: 12,
-                              child: Container(width: 28, height: 28, decoration: BoxDecoration(borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.white24, width: 6))),
-                            ),
-                            Positioned(
-                              right: 12,
-                              top: 12,
-                              child: Container(width: 28, height: 28, decoration: BoxDecoration(borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.white24, width: 6))),
-                            ),
-                            Positioned(
-                              left: 12,
-                              bottom: 12,
-                              child: Container(width: 28, height: 28, decoration: BoxDecoration(borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.white24, width: 6))),
-                            ),
-                            Positioned(
-                              right: 12,
-                              bottom: 12,
-                              child: Container(width: 28, height: 28, decoration: BoxDecoration(borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.white24, width: 6))),
-                            ),
-
-                            // center camera icon (smaller)
-                            Positioned.fill(
-                              child: Align(
-                                alignment: Alignment.center,
-                                child: GestureDetector(
-                                  onTap: _openCamera,
-                                  child: Container(
-                                    width: 56,
-                                    height: 56,
-                                    decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(12)),
-                                    child: const Icon(Icons.camera_alt, color: Colors.white, size: 28),
-                                  ),
-                                ),
-                              ),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF8A2BE2), Color(0xFFDE3AFF)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.45),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
                             ),
                           ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(18),
+                          child: MobileScanner(
+                            controller: _scannerController,
+                            onDetect: _onDetect,
+                          ),
                         ),
                       ),
                     ),
 
                     const SizedBox(height: 24),
 
-                    // Instructions card
+                    // ===== INSTRUCTION =====
                     GlassContainer(
                       width: double.infinity,
                       height: 160,
@@ -185,13 +146,28 @@ class _ScanPageState extends State<ScanPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: const [
-                          Text('Scan Instruksi', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                          Text(
+                            'Scan Instruksi',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           SizedBox(height: 12),
-                          Text('1. Posisi kan QR code dengan bingkai scan', style: TextStyle(color: Colors.white70)),
+                          Text(
+                            '1. Posisikan QR code di dalam bingkai',
+                            style: TextStyle(color: Colors.white70),
+                          ),
                           SizedBox(height: 6),
-                          Text('2. Tahan dengan stabil hingga scan selesai', style: TextStyle(color: Colors.white70)),
+                          Text(
+                            '2. Tahan perangkat hingga QR terbaca',
+                            style: TextStyle(color: Colors.white70),
+                          ),
                           SizedBox(height: 6),
-                          Text('3. Lakukan konfirmasi pembayaran', style: TextStyle(color: Colors.white70)),
+                          Text(
+                            '3. Lanjutkan ke konfirmasi pembayaran',
+                            style: TextStyle(color: Colors.white70),
+                          ),
                         ],
                       ),
                     ),
