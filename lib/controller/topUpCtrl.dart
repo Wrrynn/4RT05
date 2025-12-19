@@ -1,4 +1,3 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:artos/service/db_service.dart';
 import 'package:artos/model/topup.dart';
 import 'dart:convert';
