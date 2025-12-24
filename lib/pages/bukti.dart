@@ -2,6 +2,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:artos/widgets/bgPurple.dart';
 import 'package:artos/widgets/glass.dart';
+import 'package:artos/model/transaksi.dart';
+import 'package:artos/model/topup.dart';
 
 class BuktiPembayaranPage extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -10,51 +12,69 @@ class BuktiPembayaranPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final type = (data['type'] ?? '').toString();
-    final isTopup = type.toLowerCase() == 'topup';
+    // Ambil model dari item history
+    final dynamic model = data['model'];
 
-    final title = (data['title'] ?? (isTopup ? 'Top Up' : '-')).toString();
+    final bool isTopup = model is Topup;
+    final bool isTransfer = model is Transaksi;
 
-    // Metode: ambil metode, fallback subtitle. Kalau subtitle ada "• sukses", ambil kiri saja.
-    final metodeRaw = (data['metode'] ?? data['subtitle'] ?? '-').toString();
-    final metode = metodeRaw.split('•').first.trim();
+    // fallback aman kalau ternyata model tidak ada
+    if (!isTopup && !isTransfer) {
+      return _errorPage(
+        context,
+        "Data receipt tidak valid (model tidak ditemukan).",
+      );
+    }
 
-    // Status selalu berhasil
-    const status = 'Berhasil';
+    // ====== Ambil data dari model ======
+    final String title = (data['title'] ?? (isTopup ? 'Top Up' : 'Transfer'))
+        .toString();
 
-    final jumlah = _toNum(data['jumlah'] ?? _extractAmount(data['amount']));
-    final biaya = _toNum(data['biaya'] ?? 0);
-    final total = _toNum(data['total'] ?? (jumlah + biaya));
+    // Metode & status dari model (bukan map)
+    final String metode = isTopup
+        ? (model as Topup).detailMetode
+        : (model as Transaksi).metodeTransaksi;
 
-    // ===== Ambil ID ASLI lalu pendekkan (TIDAK buang huruf) =====
-    final rawId = data['id_transaksi'] ??
-        data['id_topup'] ??
-        data['order_id'] ??
-        data['orderId'] ??
-        data['id'];
+    final String status = isTopup
+        ? (model as Topup).status
+        : (model as Transaksi).status;
 
-    final idTrx = _shortId(rawId, take: 8);
+    // Jumlah / biaya / total
+    final num jumlah = isTopup
+        ? (model as Topup).jumlah
+        : (model as Transaksi).totalTransaksi;
+    final num biaya = isTopup ? 0 : (model as Transaksi).biayaTransfer;
+    final num total = isTopup ? jumlah : (jumlah + biaya);
 
-    // Dari selalu "Anda"
-    const dari = 'Anda';
+    // Waktu
+    final DateTime dt =
+        (isTopup
+                ? (model as Topup).waktuTopup
+                : (model as Transaksi).waktuDibuat)
+            .toLocal();
 
-    // Ke: kalau controller sudah kirim 'ke' pakai itu, kalau tidak fallback ke title
-    final ke = (data['ke'] ?? title).toString();
-
-    final dt = _toDateTime(
-      data['tanggal'] ?? data['waktu'] ?? data['waktu_dibuat'],
-    ).toLocal();
-
-    final tanggalStr =
+    final String tanggalStr =
         '${dt.day.toString().padLeft(2, '0')}-'
         '${dt.month.toString().padLeft(2, '0')}-'
         '${dt.year}';
 
-    final waktuStr =
+    final String waktuStr =
         '${dt.hour.toString().padLeft(2, '0')}:'
         '${dt.minute.toString().padLeft(2, '0')}';
 
-    final headerTitle = isTopup ? 'TopUp Berhasil' : 'Transaksi Berhasil';
+    // ID asli dari model, lalu dipendekin TANPA buang huruf (ambil tail saja)
+    final String rawId = isTopup
+        ? ((model as Topup).idTopUp ?? (model as Topup).orderId ?? '-')
+        : ((model as Transaksi).idTransaksi ?? '-');
+
+    final String idTrx = _shortId(rawId, take: 8);
+
+    // Dari / Ke
+    const String dari = 'Anda';
+    final String ke = (data['ke'] ?? (isTopup ? 'Saldo' : title)).toString();
+
+    // Header judul
+    final String headerTitle = isTopup ? 'TopUp' : 'Transaksi';
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -80,11 +100,19 @@ class BuktiPembayaranPage extends StatelessWidget {
                             shape: BoxShape.circle,
                             color: Colors.white,
                           ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.check_rounded,
+                              size: 42,
+                              color: Color(0xFF2ECC71), // hijau
+                            ),
+                          ),
                         ),
+
                         const SizedBox(height: 16),
 
                         Text(
-                          headerTitle,
+                          "$headerTitle",
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 20,
@@ -93,8 +121,10 @@ class BuktiPembayaranPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 6),
 
+                        // kalau mau “selalu berhasil” di UI, ganti status tampilan jadi "Berhasil"
+                        // tapi tetap simpan status asli di baris Status
                         const Text(
-                          "Pembayaran Berhasil Diselesaikan",
+                          "Bukti Pembayaran",
                           style: TextStyle(color: Colors.white70),
                         ),
                         const SizedBox(height: 16),
@@ -152,7 +182,9 @@ class BuktiPembayaranPage extends StatelessWidget {
                     Expanded(
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: Colors.white.withOpacity(0.3)),
+                          side: BorderSide(
+                            color: Colors.white.withOpacity(0.3),
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
@@ -202,13 +234,13 @@ class BuktiPembayaranPage extends StatelessWidget {
   }) {
     return Column(
       children: [
-        _row("Metode Transaksi", metode),
+        _row("Metode Transaksi", metode.isEmpty ? '-' : metode),
         _row("Tanggal", tanggal),
         _row("Waktu", waktu),
         _row("Biaya Transfer", _rupiah(biaya)),
         _row("Total Jumlah", _rupiah(total)),
         _row("ID Transaksi", idTrx),
-        _row("Status", status),
+        _row("Status", status.isEmpty ? '-' : status),
       ],
     );
   }
@@ -228,17 +260,17 @@ class BuktiPembayaranPage extends StatelessWidget {
   }) {
     return Column(
       children: [
-        _row("Transaksi", title),
+        _row("Transaksi", title.isEmpty ? '-' : title),
         _row("Tanggal", tanggal),
         _row("Waktu", waktu),
-        _row("Metode", metode),
+        _row("Metode", metode.isEmpty ? '-' : metode),
         _row("Biaya Transfer", _rupiah(biaya)),
         _row("Total Jumlah", _rupiah(total)),
         _row("ID Transaksi", idTrx),
-        _row("Status", status),
+        _row("Status", status.isEmpty ? '-' : status),
         const Divider(color: Colors.white24),
         _row("Dari", dari),
-        _row("Ke", ke),
+        _row("Ke", ke.isEmpty ? '-' : ke),
       ],
     );
   }
@@ -254,12 +286,18 @@ class BuktiPembayaranPage extends StatelessWidget {
             elevation: 0,
             centerTitle: true,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Colors.white,
+              ),
               onPressed: () => Navigator.pop(context),
             ),
             title: const Text(
               "Bukti Pembayaran",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
@@ -267,7 +305,7 @@ class BuktiPembayaranPage extends StatelessWidget {
     );
   }
 
-  // ✅ ROW FIX: kiri nempel kiri, kanan nempel kanan (seperti UI contoh)
+  // kiri nempel kiri, kanan nempel kanan
   Widget _row(String left, String right) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -299,24 +337,6 @@ class BuktiPembayaranPage extends StatelessWidget {
   }
 
   // ===== Helpers =====
-  static num _toNum(dynamic v) {
-    if (v == null) return 0;
-    if (v is num) return v;
-    return num.tryParse(v.toString().replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
-  }
-
-  static DateTime _toDateTime(dynamic v) {
-    if (v is DateTime) return v;
-    if (v is String) return DateTime.tryParse(v) ?? DateTime.now();
-    return DateTime.now();
-  }
-
-  static num _extractAmount(dynamic amountStr) {
-    if (amountStr == null) return 0;
-    final raw = amountStr.toString().replaceAll(RegExp(r'[^0-9]'), '');
-    return num.tryParse(raw) ?? 0;
-  }
-
   static String _rupiah(num value) {
     final s = value.toStringAsFixed(0);
     final formatted = s.replaceAllMapped(
@@ -326,14 +346,26 @@ class BuktiPembayaranPage extends StatelessWidget {
     return 'Rp. $formatted';
   }
 
-  // ===== ID helper (TIDAK menghapus huruf) =====
+  // ambil tail N char, tidak menghapus huruf, hanya memendekkan tampilan
   static String _shortId(dynamic raw, {int take = 8}) {
-    if (raw == null) return '#-';
-
-    final s = raw.toString().trim();
+    final s = (raw ?? '').toString().trim();
     if (s.isEmpty || s == '-') return '#-';
-
     final core = s.length > take ? s.substring(s.length - take) : s;
     return '#$core';
+  }
+
+  Widget _errorPage(BuildContext context, String msg) {
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: _appBar(context),
+      body: BackgroundApp(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(msg, style: const TextStyle(color: Colors.white)),
+          ),
+        ),
+      ),
+    );
   }
 }

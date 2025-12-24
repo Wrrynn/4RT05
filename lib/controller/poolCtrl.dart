@@ -107,7 +107,7 @@ class PoolController {
   }
 
   // ============================================================
-  // JOIN GROUP (tanpa password)
+  // JOIN GROUP 
   // ============================================================
   Future<String?> joinGroup({
     required String idGrup,
