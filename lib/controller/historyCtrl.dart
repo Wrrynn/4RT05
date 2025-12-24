@@ -14,7 +14,7 @@ class HistoryController {
     'settlement',
     'success',
     'sukses',
-    'suksses',
+    'sukSses',
   ];
 
   Future<List<Map<String, dynamic>>> getHistory(String uid) async {

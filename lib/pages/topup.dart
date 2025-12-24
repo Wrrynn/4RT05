@@ -401,7 +401,7 @@ class _TopUpPageState extends State<TopUpPage> {
             icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
             onPressed: () => step > 1 ? setState(() => step--) : Navigator.pop(context),
           ),
-          const Text("Top Up", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text("Top Up", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
         ],
       ),
     );

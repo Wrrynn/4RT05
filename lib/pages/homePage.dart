@@ -7,6 +7,7 @@ import 'package:artos/widgets/bgPurple.dart';
 import 'package:artos/widgets/navbar.dart';
 import 'package:artos/pages/history.dart';
 import 'package:artos/pages/scan.dart';
+import 'package:artos/controller/logoutCtrl.dart';
 
 // import 'package:artos/widgets/fireflies.dart';
 // import 'package:artos/widgets/plasma.dart';
@@ -69,6 +70,8 @@ class _HomepageState extends State<Homepage> {
     return Container(); // default fallback
   }
 
+  final LogoutController _logoutCtrl = LogoutController();
+
   PreferredSize buildAppBar() {
     return PreferredSize(
       preferredSize: const Size.fromHeight(kToolbarHeight),
@@ -87,19 +90,10 @@ class _HomepageState extends State<Homepage> {
                 actions: [
                   Padding(
                     padding: const EdgeInsets.only(right: 12.0),
-                    child: _refreshing
-                        ? const SizedBox(
-                            width: 28,
-                            height: 28,
-                            child: CircularProgressIndicator(
-                              color: Color(0xFF5900FF),
-                              strokeWidth: 2.4,
-                            ),
-                          )
-                        : IconButton(
-                            onPressed: () => _refreshData(),
-                            icon: const Icon(Icons.refresh, color: Colors.white),
-                          ),
+                    child: IconButton(
+                      onPressed: () => _logoutCtrl.logout(context),
+                      icon: const Icon(Icons.logout, color: Colors.white),
+                    ),
                   ),
                 ],
             backgroundColor: Colors.transparent,
@@ -111,6 +105,7 @@ class _HomepageState extends State<Homepage> {
       ),
     );
   }
+
   /// Konten utama
   Widget buildMainContent() {
     return Column(

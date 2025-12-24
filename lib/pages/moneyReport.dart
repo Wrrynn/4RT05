@@ -44,11 +44,11 @@ class _LaporanKeuanganPageState extends State<LaporanKeuanganPage> {
       length: 2,
       child: Scaffold(
         extendBodyBehindAppBar: true,
-        appBar: _buildAppBar(), // Pastikan metode ini ada di dalam class State
         body: BackgroundApp(
           child: SafeArea(
             child: Column(
               children: [
+                _buildHeader(),
                 _buildMonthPicker(),
                 Expanded(
                   child: _isLoading 
@@ -86,6 +86,29 @@ class _LaporanKeuanganPageState extends State<LaporanKeuanganPage> {
     );
   }
 
+  Widget _buildHeader() {
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+    child: Row(
+      children: [
+        IconButton(
+          // Menggunakan icon yang sama dengan topup.dart
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        const Text(
+          "Analisis Keuangan", 
+          style: TextStyle(
+            color: Colors.white, 
+            fontSize: 22, 
+            fontWeight: FontWeight.bold
+          )
+        ),
+      ],
+    ),
+  );
+}
+
   Widget _buildHistogramSection() {
     return GlassContainer(
       width: double.infinity,
@@ -120,15 +143,6 @@ class _LaporanKeuanganPageState extends State<LaporanKeuanganPage> {
           ),
         ],
       ),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      centerTitle: true,
-      title: const Text("Analisis Keuangan", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
     );
   }
 
