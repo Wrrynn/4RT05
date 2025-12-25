@@ -178,7 +178,7 @@ class _LaporanKeuanganPageState extends State<LaporanKeuanganPage> {
             height: 180, width: 180,
             child: CustomPaint(
               painter: _PieChartPainter(data: data, total: total), 
-              child: Center(child: Text("Total\nRp${total.toInt()}", textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13))),
+              child: Center(child: Text("Total\nRp${total.toInt()})", textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13))),
             ),
           ),
         ),

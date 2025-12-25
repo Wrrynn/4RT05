@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class GlassContainer extends StatelessWidget {
-  final double width;
+  final double? width;
   final double? height; // ✅ Ubah jadi opsional (nullable)
   final Widget child;
   final BorderRadius borderRadius;
@@ -13,7 +13,7 @@ class GlassContainer extends StatelessWidget {
 
   const GlassContainer({
     super.key,
-    required this.width,
+    this.width,
     this.height, // ✅ Hapus kata 'required'
     required this.child,
     this.borderRadius = const BorderRadius.all(Radius.circular(20)),

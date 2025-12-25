@@ -1,20 +1,18 @@
 import 'dart:ui';
-import 'package:artos/pages/pool.dart';
 import 'package:flutter/material.dart';
-//import 'package:artos/widgets/aurora.dart';
 import 'package:artos/widgets/glass.dart';
 import 'package:artos/widgets/bgPurple.dart';
 import 'package:artos/widgets/navbar.dart';
-import 'package:artos/pages/history.dart';
-import 'package:artos/pages/scan.dart';
-import 'package:artos/controller/logoutCtrl.dart';
-
-// import 'package:artos/widgets/fireflies.dart';
-// import 'package:artos/widgets/plasma.dart';
-import 'package:artos/model/pengguna.dart';
-import 'package:artos/service/db_service.dart';
-import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 import 'package:artos/widgets/currency.dart';
+import 'package:artos/model/pengguna.dart';
+import 'package:artos/controller/homeCtrl.dart';
+import 'package:artos/controller/logoutCtrl.dart';
+import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
+
+// Import Pages
+import 'package:artos/pages/pool.dart';
+import 'package:artos/pages/scan.dart';
+import 'package:artos/pages/history.dart';
 
 class Homepage extends StatefulWidget {
   final Pengguna pengguna;
@@ -26,482 +24,209 @@ class Homepage extends StatefulWidget {
 
 class _HomepageState extends State<Homepage> {
   int _pageIndex = 0;
-  late Pengguna _pengguna;
-  bool _refreshing = false;
+  final HomeController _ctrl = HomeController();
+  final LogoutController _logoutCtrl = LogoutController();
+
   @override
   void initState() {
     super.initState();
-    _pengguna = widget.pengguna;
+    _ctrl.init(widget.pengguna);
+    _loadInitialData();
   }
+
+  Future<void> _loadInitialData() async {
+    await _ctrl.loadDashboardData();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _handleRefresh() async {
+    final updated = await _ctrl.refreshData(_ctrl.pengguna.idPengguna);
+    if (updated != null) {
+      setState(() {
+        _ctrl.pengguna = updated;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
       extendBodyBehindAppBar: true,
-      appBar: _pageIndex == 0 ? buildAppBar() : null,
+      appBar: _pageIndex == 0 ? _buildAppBar() : null,
       body: BackgroundApp(
-        child: Column(
-          children: [
-            Expanded(
-              child: SafeArea(
-                child: _buildPage(_pageIndex),
-              ),
-            ),
-          ],
+        child: SafeArea(
+          child: _buildPage(_pageIndex),
         ),
       ),
       bottomNavigationBar: CustomNavBar(
         selectedIndex: _pageIndex,
-        onItemTapped: (index) {
-          setState(() {
-            _pageIndex = index;
-          });
-        },
+        onItemTapped: (index) => setState(() => _pageIndex = index),
       ),
     );
   }
 
   Widget _buildPage(int index) {
-    if (index == 0) return buildMainContent();
-    if (index == 1) return PoolPage();
-    if (index == 2) return ScanPage();
-    if (index == 3) return HistoryPage();
-
-    return Container(); // default fallback
-  }
-
-  final LogoutController _logoutCtrl = LogoutController();
-
-  PreferredSize buildAppBar() {
-    return PreferredSize(
-      preferredSize: const Size.fromHeight(kToolbarHeight),
-      child: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15), // blur halus
-          child: AppBar(
-            title: const Text(
-              'Artos',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-                actions: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 12.0),
-                    child: IconButton(
-                      onPressed: () => _logoutCtrl.logout(context),
-                      icon: const Icon(Icons.logout, color: Colors.white),
-                    ),
-                  ),
-                ],
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            titleSpacing: 25,
-            toolbarHeight: 80,
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Konten utama
-  Widget buildMainContent() {
-    return Column(
-      children: [
-        Expanded(
-          child: LiquidPullToRefresh(
-            showChildOpacityTransition: true,
-            springAnimationDurationInMilliseconds: 500,
-            color: const Color(0xFF5900FF),
-            backgroundColor: Colors.white12,
-            onRefresh: _refreshData,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 0),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOut,
-                transform: Matrix4.translationValues(0, _refreshing ? 40.0 : 0.0, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 16),
-                    buildProfileCard(),
-                    const SizedBox(height: 30),
-                    buildAksesAplikasi(context),
-                    const SizedBox(height: 30),
-                    buildFiturAplikasi(),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ================== RIWAYAT TRANSAKSI ==================
-  Widget _buildSearchBar() {
-    return GlassContainer(
-      width: double.infinity,
-      height: 55,
-      borderRadius: BorderRadius.circular(16),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      gradient: LinearGradient(
-        colors: [
-          Colors.black.withOpacity(0.25),
-          Colors.black.withOpacity(0.10),
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      borderColor: Colors.white.withOpacity(0.18),
-      child: Row(
-        children: const [
-          Icon(Icons.search, color: Colors.white54, size: 20),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              "Cari Transaksi",
-              style: TextStyle(color: Colors.white54, fontSize: 14),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _refreshData() async {
-    // simple modern refresh: fetch latest Pengguna record and update UI
-    final currentId = DBService.client.auth.currentUser?.id ?? _pengguna.idPengguna;
-    try {
-      setState(() => _refreshing = true);
-      final res = await DBService.client
-          .from('Pengguna')
-          .select()
-          .eq('id_pengguna', currentId)
-          .maybeSingle();
-      if (res != null) {
-        final updated = Pengguna.fromJson(res);
-        setState(() => _pengguna = updated);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Data berhasil diperbarui')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tidak dapat menemukan data pengguna')),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memperbarui: $e')),
-      );
-    } finally {
-      setState(() => _refreshing = false);
+    switch (index) {
+      case 0: return _buildMainContent();
+      case 1: return const PoolPage();
+      case 2: return const ScanPage();
+      case 3: return const HistoryPage();
+      default: return const SizedBox();
     }
   }
 
-  Widget buildAksesAplikasi(BuildContext context) {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text(
-        "Akses Cepat",
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
+  PreferredSize _buildAppBar() {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(70),
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            title: const Text('Artos', style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold)),
+            actions: [
+              IconButton(
+                onPressed: () => _logoutCtrl.logout(context),
+                icon: const Icon(Icons.logout, color: Colors.white),
+              ),
+              const SizedBox(width: 15),
+            ],
+          ),
         ),
       ),
-      const SizedBox(height: 16),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          buildFeatureButton(
-            icon: 'assets/icons/topup.png',
-            label: 'Top Up',
-            onTap: () {
-              Navigator.pushNamed(context, '/topup', arguments: _pengguna);
-            },
-          ),
-          buildFeatureButton(
-            icon: 'assets/icons/sendmoney.png',
-            label: 'Kirim Uang',
-            onTap: () {
-              Navigator.pushNamed(context, '/send');
-            },
-          ),
-          buildFeatureButton(
-            icon: 'assets/icons/payment.png',
-            label: 'Bayar',
-            onTap: () {
-              Navigator.pushNamed(context, '/payment');
-            },
-          ),
-          buildFeatureButton(
-            icon: 'assets/icons/qrcode.png',
-            label: 'Scan',
-            onTap: () {
-              Navigator.pushNamed(context, '/scan');
-            },
-          ),
-        ],
-      ),
-    ],
     );
   }
 
-  Widget _buildTransactionCard({
-    required String title,
-    required String subtitle,
-    required String amount,
-    required bool isIncome,
-  }) {
-    final Color amountColor = isIncome
-        ? const Color(0xFF1DD45E)
-        : const Color(0xFFF6339A);
-
-    return GlassContainer(
-      width: double.infinity,
-      height: 90,
-      borderRadius: BorderRadius.circular(20),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-      margin: const EdgeInsets.only(bottom: 8),
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          const Color(0xFF4B146D).withOpacity(0.7),
-          const Color(0xFF120526).withOpacity(0.9),
-        ],
-      ),
-      borderColor: Colors.white.withOpacity(0.15),
-      child: Row(
-        children: [
-          GlassContainer(
-            width: 40,
-            height: 40,
-            borderRadius: BorderRadius.circular(12),
-            gradient: LinearGradient(
-              colors: [
-                Colors.white.withOpacity(0.10),
-                Colors.white.withOpacity(0.03),
-              ],
-            ),
-            borderColor: Colors.white.withOpacity(0.15),
-            child: const Icon(
-              Icons.receipt_long_rounded,
-              color: Colors.white70,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(color: Colors.white60, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            amount,
-            style: TextStyle(
-              color: amountColor,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
+  Widget _buildMainContent() {
+    return LiquidPullToRefresh(
+      color: const Color(0xFF5900FF),
+      onRefresh: () async {
+        final updated = await _ctrl.refreshData(_ctrl.pengguna.idPengguna);
+        if (updated != null) setState(() => _ctrl.pengguna = updated);
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 20),
+            _buildDashboardCard(), // Card Utama
+            const SizedBox(height: 30),
+            _buildSectionTitle("Akses Cepat"),
+            const SizedBox(height: 16),
+            _buildQuickActions(),
+            const SizedBox(height: 30),
+            _buildSectionTitle("Fitur Aplikasi"),
+            const SizedBox(height: 16),
+            _buildFeatureList(),
+            const SizedBox(height: 100), // Padding bawah agar tidak tertutup navbar
+          ],
+        ),
       ),
     );
   }
 
-  Widget buildProfileCard() {
+  Widget _buildDashboardCard() {
     return GlassContainer(
       width: double.infinity,
-      height: 235,
-      borderRadius: BorderRadius.circular(20),
+      height: 240,
+      borderRadius: BorderRadius.circular(24),
       gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
         colors: [
-          const Color(0xFFF6339A).withOpacity(0.2),
-          const Color(0xFFAC00FF).withOpacity(0.2),
-          const Color(0xFF2B00FF).withOpacity(0.2),
+          const Color(0xFFF6339A).withOpacity(0.15),
+          const Color(0xFFAC00FF).withOpacity(0.15),
         ],
       ),
       borderColor: Colors.white.withOpacity(0.1),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // --- BAGIAN PROFIL (Tanpa Ikon Mata) ---
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Avatar
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.3),
-                    width: 2,
-                  ),
-                ),
-                child: ClipOval(
-                  child: Image.asset('assets/images/21.png', fit: BoxFit.cover),
-                ),
+              CircleAvatar(
+                radius: 30, 
+                backgroundImage: AssetImage('assets/images/21.png')
               ),
               const SizedBox(width: 15),
-
-              // Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                        _pengguna.namaLengkap,
+                      _ctrl.pengguna.namaLengkap, 
                       style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                        color: Colors.white, 
+                        fontSize: 20, 
+                        fontWeight: FontWeight.bold
+                      )
                     ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Text(
-                          "ID ${_pengguna.rekening}",
-                          style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
-                        ),
-                        SizedBox(width: 6),
-                        Icon(
-                          Icons.copy_rounded,
-                          size: 18,
-                          color: Colors.white70,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          formatCurrency(_pengguna.saldo),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        Spacer(),
-                        Icon(
-                          Icons.remove_red_eye_outlined,
-                          color: Colors.white70,
-                          size: 26,
-                        ),
-                      ],
+                    Text(
+                      "ID ${_ctrl.pengguna.rekening}", 
+                      style: const TextStyle(
+                        color: Colors.white60, 
+                        fontSize: 13
+                      )
                     ),
                   ],
                 ),
               ),
+              // Ikon mata dihapus dari sini agar tidak sejajar dengan nama
             ],
           ),
 
-          const SizedBox(height: 18),
+          const SizedBox(height: 15),
 
-          // Pemasukan & Pengeluaran
+          // --- BAGIAN SALDO UTAMA & IKON MATA (Sejajar Horisontal) ---
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween, // Mendorong ikon ke kanan
+            crossAxisAlignment: CrossAxisAlignment.center, // Sejajar secara vertikal
             children: [
-              Expanded(
-                child: Container(
-                  height: 80,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF1DD45E).withOpacity(0.5)),
-                    color: Colors.black.withOpacity(0.5),
-                  ),
-                  padding: const EdgeInsets.all(10),
-                  child: const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "Pemasukan",
-                          style: TextStyle(
-                          color: Color(0xB31DD45E),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        "Rp. 000",
-                          style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
+              Text(
+                _ctrl.isBalanceVisible 
+                    ? formatCurrency(_ctrl.pengguna.saldo) 
+                    : "********",
+                style: const TextStyle(
+                  color: Colors.white, 
+                  fontSize: 28, 
+                  fontWeight: FontWeight.bold
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Container(
-                  height: 80,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFFF4C4C).withOpacity(0.5)),
-                    color: Colors.black.withOpacity(0.5),
-                  ),
-                  padding: const EdgeInsets.all(10),
-                  child: const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "Pengeluaran",
-                        style: TextStyle(
-                          color: Color(0xB3FF4C4C),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        "Rp. 000",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
+              // Ikon mata dipindahkan ke sini agar sejajar dengan saldo
+              IconButton(
+                icon: Icon(
+                  _ctrl.isBalanceVisible 
+                      ? Icons.visibility_outlined 
+                      : Icons.visibility_off_outlined, 
+                  color: Colors.white70,
+                  size: 28, // Ukuran sedikit diperbesar agar seimbang dengan saldo
                 ),
+                onPressed: () => setState(() => _ctrl.toggleVisibility()),
+              ),
+            ],
+          ),
+
+          const Spacer(),
+
+          // --- BAGIAN STATISTIK (Pemasukan & Pengeluaran) ---
+          Row(
+            children: [
+              _buildStatBox(
+                "Pemasukan", 
+                _ctrl.pemasukanBulanIni, 
+                const Color(0xFF1DD45E), 
+                Icons.arrow_downward
+              ),
+              const SizedBox(width: 12),
+              _buildStatBox(
+                "Pengeluaran", 
+                _ctrl.pengeluaranBulanIni, 
+                const Color(0xFFFF4C4C), 
+                Icons.arrow_upward
               ),
             ],
           ),
@@ -510,139 +235,88 @@ class _HomepageState extends State<Homepage> {
     );
   }
 
+  Widget _buildStatBox(String label, double amount, Color color, IconData icon) {
+    return Expanded(
+      child: GlassContainer(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+        borderRadius: BorderRadius.circular(16),
+        borderColor: color.withOpacity(0.3),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Icon(icon, size: 12, color: color),
+              const SizedBox(width: 4),
+              Text(label, style: TextStyle(color: color.withOpacity(0.8), fontSize: 11, fontWeight: FontWeight.bold)),
+            ]),
+            const SizedBox(height: 4),
+            // HAPUS 'const' di depan Text karena formatCurrency adalah dinamis
+            Text(
+              _ctrl.isBalanceVisible ? formatCurrency(amount) : "******",
+              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-  Widget buildFeatureButton({
-    required String icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildSectionTitle(String title) {
+    return Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold));
+  }
+
+  Widget _buildQuickActions() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _actionBtn('assets/icons/topup.png', 'Top Up', '/topup'),
+        _actionBtn('assets/icons/sendmoney.png', 'Kirim', '/send'),
+        _actionBtn('assets/icons/payment.png', 'Bayar', '/payment'),
+        _actionBtn('assets/icons/qrcode.png', 'Scan', '/scan'),
+      ],
+    );
+  }
+
+  Widget _actionBtn(String icon, String label, String route) {
     return Column(
       children: [
         GestureDetector(
-          onTap: onTap,
+          onTap: () => Navigator.pushNamed(context, route, arguments: _ctrl.pengguna),
           child: GlassContainer(
-            width: 75,
-            height: 75,
-            borderRadius: BorderRadius.circular(15),
-            gradient: const LinearGradient(
-              colors: [Color(0xFFAE00FF), Color(0xFF3C00FF)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            child: Center(child: Image.asset(icon, width: 40, height: 40)),
+            width: 70, height: 70, borderRadius: BorderRadius.circular(15),
+            gradient: const LinearGradient(colors: [Color(0xFFAE00FF), Color(0xFF3C00FF)]),
+            child: Center(child: Image.asset(icon, width: 35)),
           ),
         ),
-        const SizedBox(height: 5),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        const SizedBox(height: 8),
+        Text(label, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
       ],
     );
   }
 
-  Widget buildFiturAplikasi() {
+  Widget _buildFeatureList() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "Fitur Aplikasi",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        fiturButton(
-          text: "Manajemen Uang",
-          iconPath: 'assets/icons/management.png',
-          onTap: () {
-            Navigator.pushNamed(context, '/moneyManagement');
-          },
-        ),
-
-        fiturButton(
-          text: "Laporan Keuangan",
-          iconPath: 'assets/icons/management.png',
-          onTap: () {
-            Navigator.pushNamed(context, '/moneyReport');
-          },
-        ),
+        _featureItem("Manajemen Uang", 'assets/icons/management.png', '/moneyManagement'),
+        _featureItem("Laporan Keuangan", 'assets/icons/management.png', '/moneyReport'),
       ],
     );
   }
 
-  Widget fiturButton({
-    required String text,
-    required String iconPath,
-    VoidCallback? onTap,
-  }) {
+  Widget _featureItem(String title, String icon, String route) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () => Navigator.pushNamed(context, route),
       child: GlassContainer(
-        width: double.infinity,
-        height: 85,
-        borderRadius: BorderRadius.circular(18),
+        width: double.infinity, height: 80, margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        margin: const EdgeInsets.only(bottom: 12),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFFAC00FF).withOpacity(0.15),
-            const Color(0xFF2B00FF).withOpacity(0.15),
-          ],
-        ),
-        borderColor: Colors.white.withOpacity(0.15),
-
+        gradient: LinearGradient(colors: [const Color(0xFFAC00FF).withOpacity(0.1), const Color(0xFF2B00FF).withOpacity(0.1)]),
         child: Row(
           children: [
-            // Ikon kiri
-            GlassContainer(
-              width: 55,
-              height: 55,
-              borderRadius: BorderRadius.circular(15),
-              gradient: const LinearGradient(
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
-                colors: [Color(0xFFAC00FF), Color(0xFF3C00FF)],
-              ),
-              child: Center(
-                child: Image.asset(
-                  iconPath, // 🔹 bisa diubah bebas
-                  width: 28,
-                  height: 28,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-
+            GlassContainer(width: 50, height: 50, borderRadius: BorderRadius.circular(12), child: Center(child: Image.asset(icon, width: 25, color: Colors.white))),
             const SizedBox(width: 16),
-
-            // teks fitur (dinamis)
-            Expanded(
-              child: Text(
-                text,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-
-            // Panah kanan
-            const Icon(
-              Icons.arrow_forward_ios_rounded,
-              color: Colors.white70,
-              size: 18,
-            ),
+            Expanded(child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600))),
+            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white70, size: 16),
           ],
         ),
       ),
