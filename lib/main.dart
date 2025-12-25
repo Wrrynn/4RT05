@@ -2,12 +2,14 @@ import 'package:artos/pages/history.dart';
 import 'package:artos/pages/login.dart';
 import 'package:flutter/material.dart';
 import 'package:artos/pages/topup.dart';
+import 'package:artos/pages/homePage.dart';
 import 'package:artos/pages/send.dart';
 import 'package:artos/pages/payment.dart';
 import 'package:artos/pages/scan.dart';
 import 'package:artos/pages/moneyManagement.dart';
 import 'package:artos/pages/moneyReport.dart';
 import 'package:artos/pages/pool.dart';
+import 'package:artos/pages/qrisPayment.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 
@@ -41,6 +43,7 @@ class MyApp extends StatelessWidget {
         '/send' : (context) => const SendMoneyPage(),
         '/payment': (context) => const PaymentPage(),
         '/scan': (context) => const ScanPage(),
+        '/qrisPayment': (context) => const QrisPaymentPage(),
         '/moneyManagement': (context) => const ManajemenKeuanganPage(),
         '/moneyReport': (context) => const LaporanKeuanganPage(),
         '/history': (context) => const HistoryPage(),

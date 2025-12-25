@@ -1,182 +1,174 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-
-import 'package:artos/pages/homePage.dart';
-import 'package:artos/model/pengguna.dart';
-import 'package:artos/service/db_service.dart';
-
 import 'package:artos/widgets/bgPurple.dart';
-import 'package:artos/widgets/aurora.dart';
-import 'package:artos/widgets/fireflies.dart';
 import 'package:artos/widgets/glass.dart';
+import 'package:artos/widgets/currency.dart';
+import 'package:artos/controller/scanCtrl.dart';
+import 'package:artos/model/pengguna.dart';
 
 class ScanPage extends StatefulWidget {
   const ScanPage({super.key});
-
   @override
   State<ScanPage> createState() => _ScanPageState();
 }
 
 class _ScanPageState extends State<ScanPage> {
-  final MobileScannerController _scannerController =
-      MobileScannerController();
+  final MobileScannerController _scannerController = MobileScannerController();
+  final ScanController _scanCtrl = ScanController();
+  bool _isProcessing = false;
 
-  bool _hasScanned = false;
+  void _onDetect(BarcodeCapture capture) async {
+    if (_isProcessing) return; // Mencegah scan ganda
+    final raw = capture.barcodes.first.rawValue;
+    if (raw == null) return;
 
-  void _onDetect(BarcodeCapture capture) {
-    if (_hasScanned) return;
+    setState(() => _isProcessing = true);
+    _scannerController.stop();
 
-    final barcode = capture.barcodes.first;
-    final raw = barcode.rawValue;
+    // Identifikasi tipe QR melalui Controller
+    final result = _scanCtrl.identifyAndParse(raw);
 
-    if (raw == null || raw.isEmpty) return;
-
-    _hasScanned = true;
-
-    debugPrint('QR RAW VALUE: $raw');
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('QR terbaca')),
-    );
-
-    // NANTI:
-    // - parse QRIS
-    // - navigate ke konfirmasi
+    if (result['type'] == 'QRIS') {
+      _showPaymentSheet(result['data']);
+    } 
+    else if (result['type'] == 'INTERNAL_TRANSFER') {
+      // Navigasi ke halaman kirim uang dengan membawa data rekening
+      Navigator.pushReplacementNamed(
+        context, 
+        '/send', 
+        arguments: result['data']['rekening']
+      );
+    } 
+    else {
+      _showErrorDialog("Format QR tidak dikenali oleh Artos.");
+    }
   }
 
-  @override
-  void dispose() {
-    _scannerController.dispose();
-    super.dispose();
+  // --- UI KONFIRMASI PEMBAYARAN QRIS ---
+  void _showPaymentSheet(Map<String, dynamic> data) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A0630),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25))
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("Konfirmasi Bayar", 
+              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            _infoItem("Tujuan", data['merchantName']),
+            _infoItem("Nominal", data['amount'] != null 
+                ? formatCurrency(data['amount']) 
+                : "Masukkan Manual di Halaman Berikutnya"),
+            const SizedBox(height: 30),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFAC00FF),
+                minimumSize: const Size(double.infinity, 50)
+              ),
+              onPressed: () {
+                // 1. Tutup Bottom Sheet terlebih dahulu
+                Navigator.pop(context); 
+                
+                // 2. Navigasi ke halaman detail pembayaran QRIS
+                // Pastikan rute '/qrisPayment' sudah didaftarkan di main.dart
+                Navigator.pushNamed(
+                  context, 
+                  '/qrisPayment', 
+                  arguments: data // Mengirim data merchantName dan amount dari hasil scan
+                );
+              },
+              child: const Text("Lanjut", style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    ).then((_) {
+      _scannerController.start();
+      setState(() => _isProcessing = false);
+    });
+  }
+
+  Widget _infoItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.white70)),
+          Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  void _showErrorDialog(String msg) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Gagal"),
+        content: Text(msg),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("OK"))
+        ],
+      ),
+    ).then((_) {
+      _scannerController.start();
+      setState(() => _isProcessing = false);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final boxSize = screenWidth * 0.78;
-
     return Scaffold(
-      backgroundColor: Colors.transparent,
       body: BackgroundApp(
         child: SafeArea(
-          child: Stack(
+          child: Column(
             children: [
-              const Positioned.fill(child: AnimatedPurpleAuroraBackground()),
-              const Positioned.fill(child: FloatingFireflies()),
-
-              SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ===== HEADER =====
-                    Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: const Icon(
-                            Icons.arrow_back_ios_new_rounded,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        const Expanded(
-                          child: Text(
-                            'Scan QR Code',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 26,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () =>
-                              _scannerController.toggleTorch(),
-                          icon: const Icon(
-                            Icons.flash_on,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
+              _buildHeader(),
+              const SizedBox(height: 40),
+              Center(
+                child: Container(
+                  width: 280, height: 280,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: const Color(0xFFAC00FF), width: 4)
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: MobileScanner(
+                      controller: _scannerController, 
+                      onDetect: _onDetect
                     ),
-
-                    const SizedBox(height: 18),
-
-                    // ===== SCAN BOX =====
-                    Center(
-                      child: Container(
-                        width: boxSize,
-                        height: boxSize,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(18),
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF8A2BE2), Color(0xFFDE3AFF)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.45),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
-                            ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(18),
-                          child: MobileScanner(
-                            controller: _scannerController,
-                            onDetect: _onDetect,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // ===== INSTRUCTION =====
-                    GlassContainer(
-                      width: double.infinity,
-                      height: 160,
-                      padding: const EdgeInsets.all(16),
-                      borderRadius: BorderRadius.circular(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text(
-                            'Scan Instruksi',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          SizedBox(height: 12),
-                          Text(
-                            '1. Posisikan QR code di dalam bingkai',
-                            style: TextStyle(color: Colors.white70),
-                          ),
-                          SizedBox(height: 6),
-                          Text(
-                            '2. Tahan perangkat hingga QR terbaca',
-                            style: TextStyle(color: Colors.white70),
-                          ),
-                          SizedBox(height: 6),
-                          Text(
-                            '3. Lanjutkan ke konfirmasi pembayaran',
-                            style: TextStyle(color: Colors.white70),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
+              const SizedBox(height: 30),
+              const Text("Arahkan kamera ke QR Code", 
+                style: TextStyle(color: Colors.white70, fontSize: 14)),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+          const Text("Scan QR", 
+            style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+        ],
       ),
     );
   }
