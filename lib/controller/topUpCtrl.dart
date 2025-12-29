@@ -7,7 +7,7 @@ class TopupController {
   final supabase = DBService.client;
   
   // ⚠️ GANTI DENGAN SECRET KEY SANDBOX MIDTRANS ⚠️ 
-  final String serverKey = "Mid-server-""IApp0q6liFZkeMsmwN586_0E"; 
+  final String serverKey = "Mid-server-IApp0q6liFZkeMsmwN586_0E"; 
 
   // --- 1. Request Transaksi ---
   Future<Topup?> createTransaction({
@@ -64,7 +64,7 @@ class TopupController {
   // GANTI fungsi checkTransactionStatus Anda dengan versi "Pintar" ini:
   Future<String> checkTransactionStatus(String orderId, String userId, double amount) async {
     // Ingat: Gunakan Split String agar aman push ke GitHub
-    final String serverKey = "Mid-server-" "IApp0q6liFZkeMsmwN586_0E"; // Sesuaikan key Anda
+    final String serverKey = "Mid-server-IApp0q6liFZkeMsmwN586_0E"; // Sesuaikan key Anda
     final String basicAuth = 'Basic ${base64Encode(utf8.encode('$serverKey:'))}';
     
     try {
