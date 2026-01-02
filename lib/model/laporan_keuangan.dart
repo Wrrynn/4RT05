@@ -1,83 +1,52 @@
-class LaporanKeuangan {
-  //private atributes
-  final int _idLaporan;
-  final int _idPengguna;
-  double _totalPemasukan;
-  double _totalPengeluaran;
-  double _totalKontribusi;
-  int _totalKategori;
-  DateTime _tanggalMulai;
-  DateTime _tanggalSelesai;
+class ModelLaporan {
+  final String? idLaporan; // nullable
+  final String idPengguna;
+  final String? idKategori;
+  final double totalPemasukan;
+  final double totalPengeluaran;
+  final double totalKontribusi;
+  final double totalKategori;
+  final String? idTransaksi;
+  final String? idTopup;
 
-  //Constructor
-  LaporanKeuangan({
-    required int idLaporan,
-    required int idPengguna,
-    required double totalPemasukan,
-    required double totalPengeluaran,
-    required double totalKontribusi,
-    required int totalKategori,
-    required DateTime tanggalMulai,
-    required DateTime tanggalSelesai,
-  })  : _idLaporan = idLaporan,
-        _idPengguna = idPengguna,
-        _totalPemasukan = totalPemasukan,
-        _totalPengeluaran = totalPengeluaran,
-        _totalKontribusi = totalKontribusi,
-        _totalKategori = totalKategori,
-        _tanggalMulai = tanggalMulai,
-        _tanggalSelesai = tanggalSelesai;
+  ModelLaporan({
+    this.idLaporan,
+    required this.idPengguna,
+    this.idKategori,
+    required this.totalPemasukan,
+    required this.totalPengeluaran,
+    required this.totalKontribusi,
+    required this.totalKategori,
+    this.idTransaksi,
+    this.idTopup,
+  });
 
-  // Getter Setter
-  int get idLaporan => _idLaporan;
-
-  int get idPengguna => _idPengguna;
-
-  double get totalPemasukan => _totalPemasukan;
-  set totalPemasukan(double value) => _totalPemasukan = value;
-
-  double get totalPengeluaran => _totalPengeluaran;
-  set totalPengeluaran(double value) => _totalPengeluaran = value;
-
-  double get totalKontribusi => _totalKontribusi;
-  set totalKontribusi(double value) => _totalKontribusi = value;
-
-  int get totalKategori => _totalKategori;
-  set totalKategori(int value) => _totalKategori = value;
-
-  DateTime get tanggalMulai => _tanggalMulai;
-  set tanggalMulai(DateTime value) => _tanggalMulai = value;
-
-  DateTime get tanggalSelesai => _tanggalSelesai;
-  set tanggalSelesai(DateTime value) => _tanggalSelesai = value;
-
-  // method
-  double hitungTotalPemasukan() {
-    return _totalPemasukan + _totalKontribusi;
+  /// UNTUK INSERT
+  Map<String, dynamic> toInsertJson() {
+    return {
+      'id_pengguna': idPengguna,
+      'id_kategori': idKategori,
+      'total_pemasukan': totalPemasukan,
+      'total_pengeluaran': totalPengeluaran,
+      'total_kontribusi': totalKontribusi,
+      'total_kategori': totalKategori,
+      'id_transaksi': idTransaksi,
+      'id_topup': idTopup,
+    };
   }
 
-  double hitungTotalPengeluaran() {
-    return _totalPengeluaran;
-  }
-
-  void tampilkanGrafik() {}
-
-  String tampilkanRingkasan() {
-    double saldo = hitungTotalPemasukan() - hitungTotalPengeluaran();
-
-    return '''
-===== Laporan Keuangan =====
-ID Laporan     : $_idLaporan
-ID Pengguna    : $_idPengguna
-Periode        : ${_tanggalMulai.toLocal()} - ${_tanggalSelesai.toLocal()}
-----------------------------------------
-Total Pemasukan     : Rp${_totalPemasukan.toStringAsFixed(2)}
-Total Pengeluaran   : Rp${_totalPengeluaran.toStringAsFixed(2)}
-Total Kontribusi    : Rp${_totalKontribusi.toStringAsFixed(2)}
-Jumlah Kategori     : $_totalKategori
-----------------------------------------
-Saldo Akhir         : Rp${saldo.toStringAsFixed(2)}
-========================================
-''';
+  /// DARI DATABASE
+  factory ModelLaporan.fromJson(Map<String, dynamic> json) {
+    return ModelLaporan(
+      idLaporan: json['id_laporan'],
+      idPengguna: json['id_pengguna'],
+      idKategori: json['id_kategori'],
+      totalPemasukan: (json['total_pemasukan'] ?? 0).toDouble(),
+      totalPengeluaran: (json['total_pengeluaran'] ?? 0).toDouble(),
+      totalKontribusi: (json['total_kontribusi'] ?? 0).toDouble(),
+      totalKategori: (json['total_kategori'] ?? 0).toDouble(),
+      idTransaksi: json['id_transaksi'],
+      idTopup: json['id_topup'],
+    );
   }
 }

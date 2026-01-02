@@ -2,9 +2,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:artos/widgets/bgPurple.dart';
 import 'package:artos/widgets/glass.dart';
-import 'package:artos/controller/historyCtrl.dart';
+import 'package:artos/controller/laporanCtrl.dart';
 import 'package:artos/service/db_service.dart';
 import 'package:artos/pages/history.dart';
+import 'package:artos/widgets/currency.dart';
 
 class LaporanKeuanganPage extends StatefulWidget {
   const LaporanKeuanganPage({super.key});
@@ -13,7 +14,7 @@ class LaporanKeuanganPage extends StatefulWidget {
 }
 
 class _LaporanKeuanganPageState extends State<LaporanKeuanganPage> {
-  final HistoryController _ctrl = HistoryController();
+  final LaporanKeuanganController _ctrl = LaporanKeuanganController();
   DateTime _selectedMonth = DateTime.now();
   bool _isLoading = true;
   
@@ -26,17 +27,20 @@ class _LaporanKeuanganPageState extends State<LaporanKeuanganPage> {
   void initState() { super.initState(); _fetchData(); }
 
   Future<void> _fetchData() async {
-    setState(() => _isLoading = true);
-    final uid = DBService.client.auth.currentUser?.id ?? "";
-    final data = await _ctrl.getMonthlyReportData(uid, _selectedMonth);
-    setState(() {
-      _income = data['pemasukan'];
-      _expense = data['pengeluaran'];
-      _expenseCat = data['expense_categories'];
-      _incomeCat = data['income_categories'];
-      _isLoading = false;
-    });
-  }
+  setState(() => _isLoading = true);
+
+  final uid = DBService.client.auth.currentUser?.id ?? "";
+  final data = await _ctrl.getMonthlyReportData(uid, _selectedMonth);
+
+  setState(() {
+    _income = data['pemasukan'];
+    _expense = data['pengeluaran'];
+    _expenseCat = Map<String, double>.from(data['expense_categories']);
+    _incomeCat = Map<String, double>.from(data['income_categories']);
+    _isLoading = false;
+  });
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -153,7 +157,8 @@ class _LaporanKeuanganPageState extends State<LaporanKeuanganPage> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        Text("Rp${value.toInt()}", style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+        Text(formatCurrency(value), 
+        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         Container(
           width: 45,
@@ -178,7 +183,7 @@ class _LaporanKeuanganPageState extends State<LaporanKeuanganPage> {
             height: 180, width: 180,
             child: CustomPaint(
               painter: _PieChartPainter(data: data, total: total), 
-              child: Center(child: Text("Total\nRp${total.toInt()})", textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13))),
+              child: Center(child: Text("Total\n${formatCurrency(total)}", textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13))),
             ),
           ),
         ),
@@ -203,7 +208,9 @@ class _LaporanKeuanganPageState extends State<LaporanKeuanganPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(name, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-                        Text("Rp${val.toInt()}", style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                        Text(
+                          formatCurrency(val), 
+                          style: const TextStyle(color: Colors.white54, fontSize: 12)),
                       ],
                     ),
                   ),
