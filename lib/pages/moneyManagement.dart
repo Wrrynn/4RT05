@@ -262,19 +262,19 @@ class _ManajemenKeuanganPageState extends State<ManajemenKeuanganPage> {
             formatCurrency(totalDana),
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 26,
+              fontSize: 36,
               fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          /*const Text(
             "+ 10.5% dari bulan terakhir",
             style: TextStyle(
               color: Color(0xFF28D17C),
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
-          ),
+          ),*/
         ],
       ),
     );

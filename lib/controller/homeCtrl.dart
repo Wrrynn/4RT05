@@ -1,44 +1,51 @@
 import 'package:flutter/material.dart';
 import 'package:artos/model/pengguna.dart';
-import 'package:artos/controller/historyCtrl.dart';
+import 'package:artos/controller/laporanCtrl.dart';
 import 'package:artos/controller/logoutCtrl.dart';
 import 'package:artos/service/db_service.dart';
 
 class HomeController {
-  final HistoryController _historyCtrl = HistoryController();
+  final LaporanKeuanganController _laporanCtrl =
+      LaporanKeuanganController();
   final LogoutController _logoutCtrl = LogoutController();
 
-  // State yang dipindah dari UI
+  // ===== STATE =====
   late Pengguna pengguna;
-  int pageIndex = 0;
-  bool isRefreshing = false;
   bool isBalanceVisible = true;
+
   double pemasukanBulanIni = 0;
   double pengeluaranBulanIni = 0;
 
-  /// Inisialisasi data awal
+  /// Inisialisasi awal
   void init(Pengguna p) {
     pengguna = p;
   }
 
   /// Toggle visibilitas saldo
-  void toggleVisibility() => isBalanceVisible = !isBalanceVisible;
+  void toggleVisibility() {
+    isBalanceVisible = !isBalanceVisible;
+  }
 
-  /// Mengambil data laporan bulanan
+  /// Ambil data dashboard (LAPORAN BULANAN)
   Future<void> loadDashboardData() async {
     try {
-      final data = await _historyCtrl.getMonthlyReportData(
-        pengguna.idPengguna, 
-        DateTime.now()
+      final now = DateTime.now();
+
+      final data = await _laporanCtrl.getMonthlyReportData(
+        pengguna.idPengguna,
+        now,
       );
-      pemasukanBulanIni = data['pemasukan'];
-      pengeluaranBulanIni = data['pengeluaran'];
+
+      pemasukanBulanIni = (data['pemasukan'] ?? 0).toDouble();
+      pengeluaranBulanIni = (data['pengeluaran'] ?? 0).toDouble();
     } catch (e) {
       debugPrint("Gagal load dashboard data: $e");
+      pemasukanBulanIni = 0;
+      pengeluaranBulanIni = 0;
     }
   }
 
-  /// Logika Refresh
+  /// Refresh saldo + laporan
   Future<Pengguna?> refreshData(String uid) async {
     try {
       final res = await DBService.client
@@ -46,11 +53,12 @@ class HomeController {
           .select()
           .eq('id_pengguna', uid)
           .maybeSingle();
-      
+
       await loadDashboardData();
 
       if (res != null) {
-        return Pengguna.fromJson(res);
+        pengguna = Pengguna.fromJson(res);
+        return pengguna;
       }
     } catch (e) {
       debugPrint("Refresh failed: $e");
@@ -58,6 +66,8 @@ class HomeController {
     return null;
   }
 
-  /// Logika Logout
-  void logout(BuildContext context) => _logoutCtrl.logout(context);
+  /// Logout
+  void logout(BuildContext context) {
+    _logoutCtrl.logout(context);
+  }
 }

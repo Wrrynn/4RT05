@@ -578,9 +578,9 @@ class _PoolPageState extends State<PoolPage> {
             children: [
               const Text("Undang Anggota", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
               const SizedBox(height: 16),
-              _glassTextFieldController(controller: _rekeningInviteCtrl, hint: "Rekening (opsional)"),
+              _glassTextFieldController(controller: _rekeningInviteCtrl, hint: "Rekening"),
               const SizedBox(height: 12),
-              _glassTextFieldController(controller: _teleponInviteCtrl, hint: "Telepon (opsional)", keyboardType: TextInputType.phone),
+              _glassTextFieldController(controller: _teleponInviteCtrl, hint: "Telepon", keyboardType: TextInputType.phone),
               const SizedBox(height: 18),
               SizedBox(
                 width: double.infinity,
