@@ -70,8 +70,8 @@ class _HomepageState extends State<Homepage> {
     switch (index) {
       case 0: return _buildMainContent();
       case 1: return const PoolPage();
-      case 2: return const ScanPage();
-      case 3: return const HistoryPage();
+      //case 2: return const ScanPage();
+      case 2: return const HistoryPage();
       default: return const SizedBox();
     }
   }

@@ -29,7 +29,7 @@ class _CustomNavBarState extends State<CustomNavBar> {
       items: const <Widget>[
         Icon(Icons.home, size: 30, color: Colors.white),
         Icon(Icons.group, size: 30, color: Colors.white),
-        Icon(Icons.qr_code_2, size: 30, color: Colors.white),
+        //Icon(Icons.qr_code_2, size: 30, color: Colors.white),
         Icon(Icons.receipt_long, size: 30, color: Colors.white),
       ],
       onTap: (index) => widget.onItemTapped(index),

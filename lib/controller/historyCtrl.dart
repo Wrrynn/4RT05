@@ -21,12 +21,12 @@ class HistoryController {
     final List<Map<String, dynamic>> items = [];
     final Map<String, String> namaCache = {};
 
-    // ========= 1) TRANSAKSI =========
+    // ========= 1) TRANSAKSI (KIRIM + TERIMA) =========
     try {
       final trxRes = await supabase
           .from(tableTransaksi)
           .select()
-          .eq('id_pengguna', uid)
+          .or('id_pengguna.eq.$uid,target_pengguna.eq.$uid')
           .order('waktu_dibuat', ascending: false);
 
       final transaksiList = (trxRes as List)
@@ -34,20 +34,47 @@ class HistoryController {
           .toList();
 
       for (final t in transaksiList) {
-        final title = await _resolveTransaksiTitle(t, namaCache);
-        final dt = _safeDt(t.waktuDibuat);
+        final bool isReceiver = t.targetPengguna == uid;
+        final DateTime dt = _safeDt(t.waktuDibuat);
+
+        final senderName = await _resolveUserName(t.idPengguna, namaCache);
+        final receiverName = t.targetPengguna != null
+            ? await _resolveUserName(t.targetPengguna!, namaCache)
+            : 'Penerima';
+
+        String title;
+        String keField;
+
+        if (isReceiver) {
+          // ===== TRANSAKSI MASUK =====
+          title = 'Terima dari $senderName';
+          keField = 'Anda';
+        } else {
+          // ===== TRANSAKSI KELUAR =====
+          if ((t.targetMerchant ?? '').trim().isNotEmpty) {
+            // MERCHANT
+            title = t.targetMerchant!;
+            keField = t.targetMerchant!;
+          } else {
+            // TRANSFER USER
+            title = 'Kirim ke $receiverName';
+            keField = receiverName;
+          }
+        }
 
         items.add({
           'type': 'transfer',
           'model': t,
 
-          // list
+          // ===== list =====
           'title': title,
           'subtitle': t.metodeTransaksi,
-          'amount': '-Rp. ${_formatRupiah(t.totalTransaksi)}',
-          'isIncome': false,
+          'amount': isReceiver
+              ? '+Rp. ${_formatRupiah(t.totalTransaksi)}'
+              : '-Rp. ${_formatRupiah(t.totalTransaksi)}',
+          'isIncome': isReceiver,
 
-          // receipt
+          // ===== receipt =====
           'metode': t.metodeTransaksi,
           'status': t.status,
           'id_transaksi': t.idTransaksi ?? '-',
@@ -55,8 +82,8 @@ class HistoryController {
           'jumlah': t.totalTransaksi,
           'biaya': t.biayaTransfer,
           'total': t.totalTransaksi + t.biayaTransfer,
-          'dari': 'Anda',
-          'ke': title,
+          'dari': isReceiver ? senderName : 'Anda',
+          'ke': keField,
 
           '_ts': dt,
         });
@@ -79,7 +106,7 @@ class HistoryController {
           .toList();
 
       for (final tp in topupList) {
-        final st = (tp.status).toString().trim().toLowerCase();
+        final st = tp.status.toLowerCase().trim();
         if (!_topupSuccessStatuses.contains(st)) continue;
 
         final dt = _safeDt(tp.waktuTopup);
@@ -88,18 +115,14 @@ class HistoryController {
           'type': 'topup',
           'model': tp,
 
-          // list
           'title': 'Top Up',
           'subtitle': tp.detailMetode,
           'amount': '+Rp. ${_formatRupiah(tp.jumlah)}',
           'isIncome': true,
 
-          // receipt
           'metode': tp.detailMetode,
           'status': tp.status,
           'id_transaksi': tp.idTopUp ?? (tp.orderId ?? '-'),
-          'order_id': tp.orderId,
-          'id_topup': tp.idTopUp,
           'tanggal': dt,
           'jumlah': tp.jumlah,
           'biaya': 0.0,
@@ -116,8 +139,8 @@ class HistoryController {
 
     // ========= 3) SORT =========
     items.sort((a, b) {
-      final ta = a['_ts'] as DateTime? ?? DateTime.fromMillisecondsSinceEpoch(0);
-      final tb = b['_ts'] as DateTime? ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final ta = a['_ts'] as DateTime? ?? DateTime(1970);
+      final tb = b['_ts'] as DateTime? ?? DateTime(1970);
       return tb.compareTo(ta);
     });
 
@@ -174,7 +197,24 @@ class HistoryController {
     );
   }
 
-  Future<Map<String, dynamic>> getMonthlyReportData(String uid, DateTime month) async {
+  Future<String> _resolveUserName(String uid, Map<String, String> cache) async {
+    if (cache.containsKey(uid)) return cache[uid]!;
+
+    final res = await supabase
+        .from(tablePengguna)
+        .select('nama_lengkap')
+        .eq('id_pengguna', uid)
+        .maybeSingle();
+
+    final name = res?['nama_lengkap']?.toString() ?? 'Pengguna';
+    cache[uid] = name;
+    return name;
+  }
+
+  Future<Map<String, dynamic>> getMonthlyReportData(
+    String uid,
+    DateTime month,
+  ) async {
     double totalIn = 0;
     double totalOut = 0;
     Map<String, double> expenseCatData = {};
@@ -182,7 +222,14 @@ class HistoryController {
 
     try {
       final start = DateTime(month.year, month.month, 1).toIso8601String();
-      final end = DateTime(month.year, month.month + 1, 0, 23, 59, 59).toIso8601String();
+      final end = DateTime(
+        month.year,
+        month.month + 1,
+        0,
+        23,
+        59,
+        59,
+      ).toIso8601String();
 
       final trxRes = await supabase
           .from(tableTransaksi)
@@ -196,7 +243,8 @@ class HistoryController {
             ? (t['total_transaksi'] as num).toDouble()
             : 0.0;
         totalOut += val;
-        final catName = t['Kategori']?['nama_kategori']?.toString() ?? 'Lainnya';
+        final catName =
+            t['Kategori']?['nama_kategori']?.toString() ?? 'Lainnya';
         expenseCatData[catName] = (expenseCatData[catName] ?? 0) + val;
       }
 
@@ -212,7 +260,9 @@ class HistoryController {
       for (var tp in (topRes as List)) {
         final topupItem = Topup.fromMap(tp as Map<String, dynamic>);
         totalIn += topupItem.jumlah;
-        final method = topupItem.detailMetode.isEmpty ? "Lainnya" : topupItem.detailMetode;
+        final method = topupItem.detailMetode.isEmpty
+            ? "Lainnya"
+            : topupItem.detailMetode;
         incomeCatData[method] = (incomeCatData[method] ?? 0) + topupItem.jumlah;
       }
     } catch (e) {

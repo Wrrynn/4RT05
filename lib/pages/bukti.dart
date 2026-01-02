@@ -70,8 +70,8 @@ class BuktiPembayaranPage extends StatelessWidget {
     final String idTrx = _shortId(rawId, take: 8);
 
     // Dari / Ke
-    const String dari = 'Anda';
-    final String ke = (data['ke'] ?? (isTopup ? 'Saldo' : title)).toString();
+    String dari = data['dari']?.toString() ?? '-';
+    String ke = data['ke']?.toString() ?? '-';
 
     // Header judul
     final String headerTitle = isTopup ? 'TopUp' : 'Transaksi';
@@ -176,44 +176,6 @@ class BuktiPembayaranPage extends StatelessWidget {
                 ),
 
                 const SizedBox(height: 16),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(
-                            color: Colors.white.withOpacity(0.3),
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        onPressed: () {},
-                        child: const Text(
-                          "Unduh",
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFAC00FF),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        onPressed: () {},
-                        child: const Text(
-                          "Bagikan",
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ],
             ),
           ),
