@@ -219,6 +219,7 @@ class BuktiPembayaranPage extends StatelessWidget {
     required String status,
     required String dari,
     required String ke,
+    required String deskripsi,
   }) {
     return Column(
       children: [
@@ -233,6 +234,7 @@ class BuktiPembayaranPage extends StatelessWidget {
         const Divider(color: Colors.white24),
         _row("Dari", dari),
         _row("Ke", ke.isEmpty ? '-' : ke),
+        _row("Deskripsi", deskripsi.isEmpty ? '-' : deskripsi),
       ],
     );
   }

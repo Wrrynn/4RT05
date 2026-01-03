@@ -4,6 +4,13 @@ import 'package:artos/model/laporan_keuangan.dart';
 class LaporanKeuanganController {
   final _db = DBService.client;
 
+  static const List<String> _topupSuccessStatuses = [
+    'settlement',
+    'success',
+    'sukses',
+    'sukSses',
+  ];
+
   Future<Map<String, dynamic>> getMonthlyReportData(
     String userId,
     DateTime month,
@@ -23,6 +30,7 @@ class LaporanKeuanganController {
           .from('Top Up')
           .select('jumlah')
           .eq('id_pengguna_topup', userId)
+          .inFilter('status', _topupSuccessStatuses)
           .gte('waktu_dibuat', start.toIso8601String())
           .lte('waktu_dibuat', end.toIso8601String());
 

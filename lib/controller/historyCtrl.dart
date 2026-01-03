@@ -84,6 +84,7 @@ class HistoryController {
           'total': t.totalTransaksi + t.biayaTransfer,
           'dari': isReceiver ? senderName : 'Anda',
           'ke': keField,
+          'deskripsi': t.deskripsi ?? '-',
 
           '_ts': dt,
         });
