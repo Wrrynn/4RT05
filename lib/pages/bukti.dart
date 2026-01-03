@@ -69,9 +69,10 @@ class BuktiPembayaranPage extends StatelessWidget {
 
     final String idTrx = _shortId(rawId, take: 8);
 
-    // Dari / Ke
+    // Dari / Ke / Deskripsi (hanya untuk transfer)
     String dari = data['dari']?.toString() ?? '-';
     String ke = data['ke']?.toString() ?? '-';
+    String deskripsi = data['deskripsi']?.toString() ?? '-';
 
     // Header judul
     final String headerTitle = isTopup ? 'TopUp' : 'Transaksi';
@@ -169,6 +170,7 @@ class BuktiPembayaranPage extends StatelessWidget {
                             status: status,
                             dari: dari,
                             ke: ke,
+                            deskripsi: deskripsi,
                           ),
                       ],
                     ),
