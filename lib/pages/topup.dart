@@ -3,8 +3,6 @@ import 'package:url_launcher/url_launcher.dart'; // Wajib: flutter pub add url_l
 import 'package:artos/widgets/bgPurple.dart';
 import 'package:artos/widgets/glass.dart';
 import 'package:artos/controller/topUpCtrl.dart';
-import 'package:artos/model/pengguna.dart';
-import 'package:artos/model/topup.dart';
 import 'dart:async';
 
 class TopUpPage extends StatefulWidget {
@@ -18,21 +16,25 @@ class _TopUpPageState extends State<TopUpPage> {
   String selectedCategory = ""; // 'bank', 'qris', 'cash'
   String selectedLabel = "";
   bool _isLoading = false;
-  
+
   final TextEditingController _amountController = TextEditingController();
   final TopupController _topupCtrl = TopupController();
-  late Pengguna currentUser;
-  Topup? pendingTopup;
+  late String userId;
+  String? _orderId;
+  String? _redirectUrl;
+  double _pendingAmount = 0;
   Timer? _timer;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    currentUser = ModalRoute.of(context)!.settings.arguments as Pengguna;
+    userId = ModalRoute.of(context)!.settings.arguments as String;
   }
 
   void _msg(String m) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m), duration: const Duration(seconds: 2)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(m), duration: const Duration(seconds: 2)),
+    );
   }
 
   @override
@@ -52,36 +54,37 @@ class _TopUpPageState extends State<TopUpPage> {
     try {
       // Kita coba paksa buka tanpa mengecek canLaunch dulu (karena sering false positif di Android 11+)
       // Mode externalApplication akan memaksa link dibuka di Chrome/Browser
-      await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication, 
-      );
-      
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+
       // --- Mulai Timer Cek Status ---
       _timer = Timer.periodic(const Duration(seconds: 5), (timer) async {
-         // ... (Kode timer cek status TETAP SAMA seperti sebelumnya) ...
-         if (pendingTopup?.orderId == null) return;
-         
-         String status = await _topupCtrl.checkTransactionStatus(
-            pendingTopup!.orderId!,
-            currentUser.idPengguna.toString(),
-            pendingTopup!.jumlah
-         );
-         
-         if (status == "success") {
-           timer.cancel();
-           if (mounted) {
-             ScaffoldMessenger.of(context).showSnackBar(
-               const SnackBar(content: Text("Pembayaran Berhasil!"), backgroundColor: Colors.green)
-             );
-             Navigator.pop(context);
-           }
-         }
-      });
+        // ... (Kode timer cek status TETAP SAMA seperti sebelumnya) ...
+        if (_orderId == null) return;
 
+        String status = await _topupCtrl.checkTransactionStatus(
+          _orderId!,
+          userId,
+          _pendingAmount,
+        );
+
+        if (status == "success") {
+          timer.cancel();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Pembayaran Berhasil!"),
+                backgroundColor: Colors.green,
+              ),
+            );
+            Navigator.pop(context);
+          }
+        }
+      });
     } catch (e) {
       print("Gagal membuka link: $e");
-      _msg("Gagal membuka browser. Silakan klik tombol 'Buka Halaman Pembayaran Lagi'");
+      _msg(
+        "Gagal membuka browser. Silakan klik tombol 'Buka Halaman Pembayaran Lagi'",
+      );
     }
   }
 
@@ -118,21 +121,52 @@ class _TopUpPageState extends State<TopUpPage> {
       key: const ValueKey(1),
       padding: const EdgeInsets.all(24),
       children: [
-        const Text("Metode Top Up", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text(
+          "Metode Top Up",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         const SizedBox(height: 20),
-        
-        _optionCard("Transfer Bank", "Virtual Account (BCA, BNI, dll)", Icons.account_balance, "bank"),
+
+        _optionCard(
+          "Transfer Bank",
+          "Virtual Account (BCA, BNI, dll)",
+          Icons.account_balance,
+          "bank",
+        ),
         const SizedBox(height: 12),
-        _optionCard("E-Wallet", "Scan QR Code (Gopay/ShopeePay)", Icons.qr_code_2, "qris"),
+        _optionCard(
+          "E-Wallet",
+          "Scan QR Code (Gopay/ShopeePay)",
+          Icons.qr_code_2,
+          "qris",
+        ),
         const SizedBox(height: 12),
-        _optionCard("Tunai / Cash", "Indomaret / Alfamart", Icons.storefront, "cash"),
+        _optionCard(
+          "Tunai / Cash",
+          "Indomaret / Alfamart",
+          Icons.storefront,
+          "cash",
+        ),
       ],
     );
   }
 
-  Widget _optionCard(String title, String subtitle, IconData icon, String category) {
+  Widget _optionCard(
+    String title,
+    String subtitle,
+    IconData icon,
+    String category,
+  ) {
     return GestureDetector(
-      onTap: () => setState(() { selectedCategory = category; selectedLabel = title; step = 2; }),
+      onTap: () => setState(() {
+        selectedCategory = category;
+        selectedLabel = title;
+        step = 2;
+      }),
       child: GlassContainer(
         width: double.infinity,
         // height dihapus agar dinamis
@@ -141,7 +175,10 @@ class _TopUpPageState extends State<TopUpPage> {
           children: [
             Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
               child: Icon(icon, color: Colors.white),
             ),
             const SizedBox(width: 16),
@@ -149,12 +186,26 @@ class _TopUpPageState extends State<TopUpPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                  Text(subtitle, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
+            const Icon(
+              Icons.arrow_forward_ios,
+              color: Colors.white54,
+              size: 16,
+            ),
           ],
         ),
       ),
@@ -163,7 +214,14 @@ class _TopUpPageState extends State<TopUpPage> {
 
   // --- 2. INPUT NOMINAL ---
   // Daftar nominal cepat yang diminta
-  final List<int> _quickAmounts = [25000, 50000, 100000, 200000, 250000, 500000];
+  final List<int> _quickAmounts = [
+    25000,
+    50000,
+    100000,
+    200000,
+    250000,
+    500000,
+  ];
 
   Widget _stepInputAmount() {
     return Padding(
@@ -180,10 +238,7 @@ class _TopUpPageState extends State<TopUpPage> {
               children: [
                 Text(
                   "Masukkan Jumlah",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16,
-                  ),
+                  style: TextStyle(color: Colors.white70, fontSize: 16),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -224,15 +279,13 @@ class _TopUpPageState extends State<TopUpPage> {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 24),
 
           // 2. OPSI INSTAN (Quick Action Buttons)
-          Align(
-            alignment: Alignment.centerLeft,
-          ),
+          Align(alignment: Alignment.centerLeft),
           const SizedBox(height: 12),
-          
+
           Wrap(
             spacing: 12, // Jarak horizontal antar tombol
             runSpacing: 12, // Jarak vertikal antar baris
@@ -246,18 +299,20 @@ class _TopUpPageState extends State<TopUpPage> {
           // 3. TOMBOL LANJUT
           _actionButton("Lanjut Pembayaran", () async {
             // Bersihkan format titik/koma sebelum parsing
-            String cleanText = _amountController.text.replaceAll('.', '').replaceAll(',', '');
+            String cleanText = _amountController.text
+                .replaceAll('.', '')
+                .replaceAll(',', '');
             double amt = double.tryParse(cleanText) ?? 0;
-            
-            if (amt < 10000) { 
-              _msg("Minimal Top Up Rp 10.000"); 
-              return; 
+
+            if (amt < 10000) {
+              _msg("Minimal Top Up Rp 10.000");
+              return;
             }
 
             setState(() => _isLoading = true);
-            
+
             var res = await _topupCtrl.createTransaction(
-              userId: currentUser.idPengguna.toString(),
+              userId: userId,
               jumlah: amt,
               category: selectedCategory,
               detailName: selectedLabel,
@@ -266,8 +321,13 @@ class _TopUpPageState extends State<TopUpPage> {
             setState(() => _isLoading = false);
 
             if (res != null) {
-              setState(() { pendingTopup = res; step = 3; });
-              _launchMidtrans(res.redirectUrl);
+              setState(() {
+                _orderId = res['orderId'];
+                _redirectUrl = res['redirectUrl'];
+                _pendingAmount = amt;
+                step = 3;
+              });
+              _launchMidtrans(_redirectUrl);
             } else {
               _msg("Gagal membuat transaksi. Cek koneksi / Server Key.");
             }
@@ -281,7 +341,9 @@ class _TopUpPageState extends State<TopUpPage> {
   Widget _buildQuickAmountButton(int amount) {
     // Format angka sederhana (contoh: 25000 -> 25.000)
     String formatted = amount.toString().replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.');
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]}.',
+    );
 
     return InkWell(
       onTap: () {
@@ -320,25 +382,36 @@ class _TopUpPageState extends State<TopUpPage> {
         children: [
           const Icon(Icons.timer_outlined, size: 80, color: Colors.cyanAccent),
           const SizedBox(height: 20),
-          const Text("Menunggu Pembayaran", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+          const Text(
+            "Menunggu Pembayaran",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 10),
-          const Text("Silahkan selesaikan pembayaran di halaman Midtrans yang terbuka.", 
-            textAlign: TextAlign.center, style: TextStyle(color: Colors.white70)),
+          const Text(
+            "Silahkan selesaikan pembayaran di halaman Midtrans yang terbuka.",
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white70),
+          ),
           const SizedBox(height: 40),
-          
+
           _actionButton("Buka Halaman Pembayaran Lagi", () {
-            _launchMidtrans(pendingTopup?.redirectUrl);
+            _launchMidtrans(_redirectUrl);
           }, color: Colors.blueAccent),
-          
+
           const SizedBox(height: 16),
-          
+
           _actionButton("Cek Status & Refresh Saldo", () async {
             setState(() => _isLoading = true);
             String status = await _topupCtrl.checkTransactionStatus(
-              pendingTopup!.orderId!, 
-              currentUser.idPengguna.toString(), 
-              pendingTopup!.jumlah
+              _orderId!,
+              userId,
+              _pendingAmount,
             );
+
             setState(() => _isLoading = false);
 
             if (status == "success") {
@@ -361,7 +434,10 @@ class _TopUpPageState extends State<TopUpPage> {
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A2E),
         title: const Text("Berhasil!", style: TextStyle(color: Colors.white)),
-        content: Text("Saldo Rp ${pendingTopup?.jumlah} telah masuk.", style: const TextStyle(color: Colors.white70)),
+        content: Text(
+          "Saldo Rp ${_pendingAmount} telah masuk.",
+          style: const TextStyle(color: Colors.white70),
+        ),
         actions: [
           TextButton(
             onPressed: () {
@@ -369,9 +445,9 @@ class _TopUpPageState extends State<TopUpPage> {
               Navigator.pop(context, true); // Kembali ke Home
             },
             child: const Text("OK", style: TextStyle(color: Colors.cyanAccent)),
-          )
+          ),
         ],
-      )
+      ),
     );
   }
 
@@ -382,12 +458,20 @@ class _TopUpPageState extends State<TopUpPage> {
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: color ?? const Color(0xFFAC00FF),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
         onPressed: _isLoading ? null : onTap,
-        child: _isLoading 
-          ? const CircularProgressIndicator(color: Colors.white) 
-          : Text(text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        child: _isLoading
+            ? const CircularProgressIndicator(color: Colors.white)
+            : Text(
+                text,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
       ),
     );
   }
@@ -399,9 +483,17 @@ class _TopUpPageState extends State<TopUpPage> {
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
-            onPressed: () => step > 1 ? setState(() => step--) : Navigator.pop(context),
+            onPressed: () =>
+                step > 1 ? setState(() => step--) : Navigator.pop(context),
           ),
-          const Text("Top Up", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+          const Text(
+            "Top Up",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );

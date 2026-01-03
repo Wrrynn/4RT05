@@ -1,94 +1,125 @@
+import 'package:artos/service/db_service.dart';
+import 'package:artos/model/grup.dart';
+
 class GrupMember {
-  final String _idMember;
-  final String _idGrup;
-  final String _idPengguna;
-  int _jumlahKontribusi;
-  String _role;
-  final DateTime _joinedAt;
+  final String idMember;
+  final String idGrup;
+  final String idPengguna;
+  int jumlahKontribusi;
+  String role;
+  final DateTime joinedAt;
 
   GrupMember({
-    required String idMember,
+    required this.idMember,
+    required this.idGrup,
+    required this.idPengguna,
+    this.jumlahKontribusi = 0,
+    this.role = 'member',
+    DateTime? joinedAt,
+  }) : joinedAt = joinedAt ?? DateTime.now();
+
+  // ==========================================
+  // DATABASE METHODS (Static)
+  // ==========================================
+  static final _db = DBService.client;
+
+  // Insert Member
+  static Future<void> insert({
     required String idGrup,
     required String idPengguna,
-    int jumlahKontribusi = 0,
     String role = 'member',
-    DateTime? joinedAt,
-  })  : _idMember = idMember,
-        _idGrup = idGrup,
-        _idPengguna = idPengguna,
-        _jumlahKontribusi = jumlahKontribusi,
-        _role = role,
-        _joinedAt = joinedAt ?? DateTime.now();
+  }) async {
+    await _db.from('Grup Member').insert({
+      'id_grup': idGrup,
+      'id_pengguna': idPengguna,
+      'jumlah_kontribusi': 0,
+      'role': role,
+    });
+  }
 
+  // Get Specific Member (Cek Role / Kontribusi)
+  static Future<GrupMember?> find(String idGrup, String idPengguna) async {
+    final res = await _db
+        .from('Grup Member')
+        .select()
+        .eq('id_grup', idGrup)
+        .eq('id_pengguna', idPengguna)
+        .maybeSingle();
+    
+    return res != null ? GrupMember.fromJson(res) : null;
+  }
+
+  // Get All Groups for a User
+  static Future<List<Grup>> getGroupsByUser(String idPengguna) async {
+    final res = await _db
+        .from('Grup Member')
+        .select('grup:Grup(*)')
+        .eq('id_pengguna', idPengguna);
+
+    return (res as List)
+        .map((row) => Grup.fromJson(row['grup'] as Map<String, dynamic>))
+        .toList();
+  }
+
+  // Get Members List with User Profile (Join)
+  static Future<List<Map<String, dynamic>>> getMembersWithProfile(String idGrup) async {
+    final res = await _db
+        .from('Grup Member')
+        .select('''
+            jumlah_kontribusi,
+            id_pengguna,
+            role,
+            Pengguna ( nama_lengkap, rekening )
+          ''')
+        .eq('id_grup', idGrup)
+        .order('jumlah_kontribusi', ascending: false);
+    
+    return List<Map<String, dynamic>>.from(res);
+  }
+
+  // Update Kontribusi
+  static Future<void> updateKontribusi(String idMember, int currentAmount, int changeAmount) async {
+    await _db.from('Grup Member').update({
+      'jumlah_kontribusi': currentAmount + changeAmount
+    }).eq('id_member', idMember);
+  }
+
+  // Delete Member
+  static Future<void> remove(String idGrup, String idPengguna) async {
+    await _db
+        .from('Grup Member')
+        .delete()
+        .eq('id_grup', idGrup)
+        .eq('id_pengguna', idPengguna);
+  }
+  
+  // Delete All Members in Group (for deleting group)
+  static Future<void> removeAllInGroup(String idGrup) async {
+    await _db.from('Grup Member').delete().eq('id_grup', idGrup);
+  }
+
+  // Count Members
+  static Future<int> countMembers(String idGrup) async {
+    final res = await _db
+        .from('Grup Member')
+        .select('id_member')
+        .eq('id_grup', idGrup);
+    return (res as List).length;
+  }
+
+  // ==========================================
+  // JSON CONVERTERS
+  // ==========================================
   factory GrupMember.fromJson(Map<String, dynamic> json) {
     return GrupMember(
       idMember: json['id_member'] as String,
       idGrup: json['id_grup'] as String,
       idPengguna: json['id_pengguna'] as String,
-      jumlahKontribusi:
-          (json['jumlah_kontribusi'] as num?)?.toInt() ?? 0,
+      jumlahKontribusi: (json['jumlah_kontribusi'] as num?)?.toInt() ?? 0,
       role: (json['role'] ?? 'member') as String,
       joinedAt: json['joined_at'] != null
           ? DateTime.parse(json['joined_at'])
           : DateTime.now(),
     );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id_member': idMember,
-      'id_grup': idGrup,
-      'id_pengguna': idPengguna,
-      'jumlah_kontribusi': jumlahKontribusi,
-      'role': role,
-      'joined_at': joinedAt.toIso8601String(),
-    };
-  }
-
-  Map<String, dynamic> toInsertJson() {
-    return {
-      'id_grup': idGrup,
-      'id_pengguna': idPengguna,
-      'jumlah_kontribusi': jumlahKontribusi,
-      'role': role,
-    };
-  }
-
-  Map<String, dynamic> toUpdateKontribusiJson() {
-    return {
-      'jumlah_kontribusi': jumlahKontribusi,
-    };
-  }
-
-  String get idMember => _idMember;
-  String get idGrup => _idGrup;
-  String get idPengguna => _idPengguna;
-
-  int get jumlahKontribusi => _jumlahKontribusi;
-  set jumlahKontribusi(int value) {
-    if (value >= 0) _jumlahKontribusi = value;
-  }
-
-  String get role => _role;
-  set role(String value) => _role = value;
-
-  DateTime get joinedAt => _joinedAt;
-
-  void tambahKontribusi(int jumlah) {
-    if (jumlah <= 0) {
-      throw Exception("Jumlah kontribusi harus lebih dari 0");
-    }
-    _jumlahKontribusi += jumlah;
-  }
-
-  String getInformasiMember() {
-    return '''
-👤 Informasi Grup Member:
-- ID Member: $_idMember
-- ID Grup: $_idGrup
-- ID Pengguna: $_idPengguna
-- Role: $_role
-- Total Kontribusi: Rp$_jumlahKontribusi
-''';
   }
 }

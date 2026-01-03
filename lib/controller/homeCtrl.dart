@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:artos/model/pengguna.dart';
 import 'package:artos/controller/laporanCtrl.dart';
 import 'package:artos/controller/logoutCtrl.dart';
-import 'package:artos/service/db_service.dart';
 
 class HomeController {
-  final LaporanKeuanganController _laporanCtrl =
-      LaporanKeuanganController();
+  final LaporanKeuanganController _laporanCtrl = LaporanKeuanganController();
   final LogoutController _logoutCtrl = LogoutController();
 
   // ===== STATE =====
@@ -46,24 +44,19 @@ class HomeController {
   }
 
   /// Refresh saldo + laporan
-  Future<Pengguna?> refreshData(String uid) async {
+  Future<void> refreshData() async {
     try {
-      final res = await DBService.client
-          .from('Pengguna')
-          .select()
-          .eq('id_pengguna', uid)
-          .maybeSingle();
-
-      await loadDashboardData();
-
-      if (res != null) {
-        pengguna = Pengguna.fromJson(res);
-        return pengguna;
+      // Gunakan model Pengguna untuk ambil data terbaru
+      final updatedUser = await Pengguna.findById(pengguna.idPengguna);
+      if (updatedUser != null) {
+        pengguna = updatedUser;
       }
+
+      // Refresh laporan
+      await loadDashboardData();
     } catch (e) {
       debugPrint("Refresh failed: $e");
     }
-    return null;
   }
 
   /// Logout

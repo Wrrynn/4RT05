@@ -22,7 +22,7 @@ class LoginController {
         throw Exception("Akun belum diverifikasi. Silakan cek email Anda.");
       }
 
-      // ✅ Controller hanya panggil Model
+      // Controller hanya panggil Model
       final pengguna = await Pengguna.findById(user.id);
 
       if (pengguna == null) {

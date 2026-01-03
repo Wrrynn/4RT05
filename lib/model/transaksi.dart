@@ -1,13 +1,11 @@
+import 'package:artos/service/db_service.dart';
+
 class Transaksi {
-  // ====== ATTRIBUTES ======
-  final String? idTransaksi;        // id_transaksi (PK - UUID)
-  final String idPengguna;         // id_pengguna (FK - pengirim, UUID)
-  final String idKategori;         // id_kategori (FK, UUID)
-
-  // untuk penerima/merchant, nullable karena tidak selalu ada
-  final String? targetPengguna;     // target_pengguna (FK - penerima, UUID)
-  final String? targetMerchant;     // target_merchant (untuk transaksi ke merchant, nullable)
-
+  final String? idTransaksi;
+  final String idPengguna;
+  final String idKategori;
+  final String? targetPengguna;
+  final String? targetMerchant;
   double totalTransaksi;
   String deskripsi;
   String metodeTransaksi;
@@ -26,70 +24,127 @@ class Transaksi {
     required this.metodeTransaksi,
     required this.status,
     required this.biayaTransfer,
-    required this.waktuDibuat,
-  });
+    DateTime? waktuDibuat,
+}) : waktuDibuat = waktuDibuat ?? DateTime.now();
 
   factory Transaksi.fromMap(Map<String, dynamic> map) {
-    DateTime parseTime(dynamic v) {
-    if (v == null) return DateTime.fromMillisecondsSinceEpoch(0);
-
-    if (v is DateTime) return v;
-
-    if (v is String) {
-      return DateTime.tryParse(v) ?? DateTime.fromMillisecondsSinceEpoch(0);
-    }
-
-    if (v is num) {
-      final n = v.toInt();
-      return DateTime.fromMillisecondsSinceEpoch(n < 1000000000000 ? n * 1000 : n);
-    }
-
-    return DateTime.fromMillisecondsSinceEpoch(0);
-  }
     return Transaksi(
       idTransaksi: map['id_transaksi']?.toString(),
-      idPengguna: map['id_pengguna']?.toString() ?? '',
-      idKategori: map['id_kategori']?.toString() ?? '',
-      targetPengguna: map['target_pengguna']?.toString(),
-      targetMerchant: map['target_merchant']?.toString(), // Ambil dari DB
-      totalTransaksi: (map['total_transaksi'] is num)
-          ? (map['total_transaksi'] as num).toDouble()
-          : (double.tryParse(map['total_transaksi']?.toString() ?? '') ?? 0.0),
-      deskripsi: map['deskripsi']?.toString() ?? '',
-      metodeTransaksi: map['metode_transaksi']?.toString() ?? '',
-      status: map['status']?.toString() ?? '',
-      biayaTransfer: (map['biaya_transfer'] is num)
-          ? (map['biaya_transfer'] as num).toDouble()
-          : double.tryParse(map['biaya_transfer']?.toString() ?? '') ?? 0.0,
-      waktuDibuat: parseTime(map['waktu_dibuat']),
+      idPengguna: map['id_pengguna'],
+      idKategori: map['id_kategori'],
+      targetPengguna: map['target_pengguna'],
+      targetMerchant: map['target_merchant'],
+      totalTransaksi: (map['total_transaksi'] as num).toDouble(),
+      deskripsi: map['deskripsi'],
+      metodeTransaksi: map['metode_transaksi'],
+      status: map['status'],
+      biayaTransfer: (map['biaya_transfer'] as num).toDouble(),
+      waktuDibuat: DateTime.parse(map['waktu_dibuat']),
     );
   }
 
-  Map<String, dynamic> toMap() {
-    final map = <String, dynamic>{
-      'id_pengguna': idPengguna,
-      'id_kategori': idKategori,
-      'target_pengguna': targetPengguna,
-      'target_merchant': targetMerchant, 
-      'total_transaksi': totalTransaksi,
-      'deskripsi': deskripsi,
-      'metode_transaksi': metodeTransaksi,
-      'status': status,
-      'biaya_transfer': biayaTransfer,
-      'waktu_dibuat': waktuDibuat.toIso8601String(),
-    };
+  static final _supabase = DBService.client;
 
-    if (idTransaksi != null && idTransaksi!.isNotEmpty) {
-      map['id_transaksi'] = idTransaksi;
-    }
-    return map;
+  // ================= SELECT =================
+  static Future<List<Transaksi>> findBulananByPengguna(
+    String idPengguna,
+    DateTime start,
+    DateTime end,
+  ) async {
+    final res = await _supabase
+        .from('Transaksi')
+        .select('id_kategori, total_transaksi')
+        .eq('id_pengguna', idPengguna)
+        .gte('waktu_dibuat', start.toIso8601String())
+        .lt('waktu_dibuat', end.toIso8601String());
+
+    return (res as List).map((e) => Transaksi.fromMap(e)).toList();
   }
 
-  bool get isIncome {
-    final s = status.toLowerCase();
-    // Treat both 'success' and 'sukses' as income-like statuses
-    if (s == 'success' || s == 'sukses') return true;
-    return false;
+  // ================= INSERT =================
+  static Future<void> insert(Transaksi transaksi) async {
+    await _supabase.from('Transaksi').insert(transaksi.toMap());
+  }
+
+  Map<String, dynamic> toMap() => {
+    'id_pengguna': idPengguna,
+    'id_kategori': idKategori,
+    'target_pengguna': targetPengguna,
+    'target_merchant': targetMerchant,
+    'total_transaksi': totalTransaksi,
+    'deskripsi': deskripsi,
+    'metode_transaksi': metodeTransaksi,
+    'status': status,
+    'biaya_transfer': biayaTransfer,
+    'waktu_dibuat': waktuDibuat.toIso8601String(),
+  };
+
+  static Future<String?> insertAndReturnId(Transaksi transaksi) async {
+    final res = await _supabase
+        .from('Transaksi')
+        .insert(transaksi.toMap())
+        .select('id_transaksi')
+        .maybeSingle();
+
+    return res?['id_transaksi'];
+  }
+
+  static Future<List<Transaksi>> findHistoryByUser(String uid) async {
+    final res = await _supabase
+        .from('Transaksi')
+        .select()
+        .or('id_pengguna.eq.$uid,target_pengguna.eq.$uid')
+        .order('waktu_dibuat', ascending: false);
+
+    return (res as List).map((e) => Transaksi.fromMap(e)).toList();
+  }
+
+  static Future<List<Map<String, dynamic>>> findMonthlyExpenseByCategory(
+    String uid,
+    DateTime start,
+    DateTime end,
+  ) async {
+    final res = await _supabase
+        .from('Transaksi')
+        .select('total_transaksi, Kategori(nama_kategori)')
+        .eq('id_pengguna', uid)
+        .gte('waktu_dibuat', start.toIso8601String())
+        .lte('waktu_dibuat', end.toIso8601String());
+
+    return (res as List).cast<Map<String, dynamic>>();
+  }
+
+  static Future<List<Map<String, dynamic>>> findMonthlyReportRaw(
+    String userId,
+    DateTime start,
+    DateTime end,
+  ) async {
+    final res = await _supabase
+        .from('Transaksi')
+        .select(
+          'id_pengguna, target_pengguna, total_transaksi, Kategori(nama_kategori)',
+        )
+        .or('id_pengguna.eq.$userId,target_pengguna.eq.$userId')
+        .gte('waktu_dibuat', start.toIso8601String())
+        .lte('waktu_dibuat', end.toIso8601String());
+
+    return (res as List).cast<Map<String, dynamic>>();
+  }
+
+  static Future<List<Map<String, dynamic>>> findMonthlyTransaksiWithKategori(
+    String userId,
+    DateTime start,
+    DateTime end,
+  ) async {
+    final res = await _supabase
+        .from('Transaksi')
+        .select(
+          'id_pengguna, target_pengguna, total_transaksi, Kategori(nama_kategori)',
+        )
+        .or('id_pengguna.eq.$userId,target_pengguna.eq.$userId')
+        .gte('waktu_dibuat', start.toIso8601String())
+        .lte('waktu_dibuat', end.toIso8601String());
+
+    return (res as List).cast<Map<String, dynamic>>();
   }
 }
-

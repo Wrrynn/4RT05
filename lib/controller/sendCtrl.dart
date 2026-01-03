@@ -1,126 +1,19 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:artos/model/pengguna.dart';
-import 'package:artos/model/transaksi.dart';
 import 'package:artos/model/kategori.dart';
+import 'package:artos/model/transaksi.dart';
 
 class SendController {
-  final SupabaseClient supabase;
-  
-  /// Cache kategori untuk akses cepat
-  List<Kategori> _cachedCategories = [];
-
-  SendController(this.supabase);
-
-  /// Ambil daftar kategori untuk dropdown
+  /// Dropdown kategori
   Future<List<Kategori>> getKategoriDropdown(String idPengguna) async {
-    try {
-      List<dynamic> response = [];
-      
-      // Try uppercase first
-      try {
-        response = await supabase
-            .from('Kategori')
-            .select()
-            .eq('id_pengguna', idPengguna) as List<dynamic>;
-      } catch (e1) {
-        // Try lowercase as fallback
-        try {
-          response = await supabase
-              .from('kategori')
-              .select()
-              .eq('id_pengguna', idPengguna) as List<dynamic>;
-        } catch (e2) {
-          return [];
-        }
-      }
-      
-      if (response.isEmpty) {
-        return [];
-      }
-      
-      final result = response
-          .map((e) {
-            try {
-              return Kategori.fromMap(e as Map<String, dynamic>);
-            } catch (e) {
-              return null;
-            }
-          })
-          .whereType<Kategori>()
-          .toList();
-      
-      // Cache hasil untuk akses cepat
-      _cachedCategories = result;
-      
-      return result;
-    } catch (e) {
-      return [];
-    }
+    return await Kategori.findByPengguna(idPengguna);
   }
 
-  /// Ambil nama kategori berdasarkan ID dari kategori yang dimuat
-  String? getNamaKategoriFromCache(String kategoriId) {
-    try {
-      for (var k in _cachedCategories) {
-        if (k.idKategori == kategoriId) {
-          return k.namaKategori;
-        }
-      }
-      return null;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  /// Ambil nama kategori berdasarkan ID
-  Future<String?> getNamaKategori(String kategoriId) async {
-    try {
-      for (var k in _cachedCategories) {
-        if (k.idKategori == kategoriId) {
-          return k.namaKategori;
-        }
-      }
-      return null;
-    } catch (e) {
-      return null;
-    }
-  }
+  /// Cari pengguna
   Future<List<Pengguna>> searchPengguna(String query) async {
-    final response = await supabase
-        .from('Pengguna')
-        .select()
-        .or('nama_lengkap.ilike.%$query%,rekening.ilike.%$query%')
-        .limit(20);
-
-    final data = response as List<dynamic>;
-    return data.map((e) => Pengguna.fromJson(e)).toList();
+    return await Pengguna.search(query);
   }
 
-  /// Cari pengguna berdasarkan rekening (akun)
-  Future<Pengguna?> getPenggunaByRekening(String rekening) async {
-    final res = await supabase
-        .from('Pengguna')
-        .select()
-        .eq('rekening', rekening)
-        .maybeSingle();
-    if (res == null) return null;
-    return Pengguna.fromJson(res);
-  }
-
-  /// Ambil saldo pengguna
-  Future<double> getSaldo(String idPengguna) async {
-    final res = await supabase
-        .from('Pengguna')
-        .select('saldo')
-        .eq('id_pengguna', idPengguna)
-        .maybeSingle();
-    if (res == null) return 0.0;
-    final s = res['saldo'];
-    if (s is num) return s.toDouble();
-    return double.tryParse(s?.toString() ?? '') ?? 0.0;
-  }
-
-  /// Kirim uang menggunakan rekening penerima
+  /// Kirim uang
   Future<void> kirimUang({
     required String pengirimId,
     required String penerimaRekening,
@@ -130,54 +23,34 @@ class SendController {
     required String deskripsi,
     double biayaTransfer = 0,
   }) async {
-    // Validasi nominal
     if (nominal <= 0) {
-      throw Exception('Nominal harus lebih besar dari 0.');
-    }
-    
-    // 1. Cek penerima valid berdasarkan rekening
-    final penerimaData = await supabase
-        .from('Pengguna')
-        .select()
-        .eq('rekening', penerimaRekening)
-        .maybeSingle();
-
-    if (penerimaData == null) {
-      throw Exception('Rekening penerima tidak valid.');
+      throw Exception('Nominal harus lebih besar dari 0');
     }
 
-    final penerima = Pengguna.fromJson(penerimaData);
-    
-    // Validasi pengirim tidak sama dengan penerima
-    if (pengirimId == penerima.idPengguna) {
-      throw Exception('Tidak bisa mengirim uang ke diri sendiri.');
+    final penerima = await Pengguna.findByRekening(penerimaRekening);
+    if (penerima == null) {
+      throw Exception('Rekening penerima tidak valid');
     }
 
-    // 2. Cek pengirim valid & saldo
-    final pengirimData = await supabase
-        .from('Pengguna')
-        .select()
-        .eq('id_pengguna', pengirimId)
-        .maybeSingle();
-
-    if (pengirimData == null) {
-      throw Exception('Pengirim tidak valid.');
+    if (penerima.idPengguna == pengirimId) {
+      throw Exception('Tidak bisa transfer ke diri sendiri');
     }
 
-    final pengirim = Pengguna.fromJson(pengirimData);
+    final pengirim = await Pengguna.findById(pengirimId);
+    if (pengirim == null) {
+      throw Exception('Pengirim tidak valid');
+    }
 
     final totalPotong = nominal + biayaTransfer;
     if (pengirim.saldo < totalPotong) {
-      throw Exception('Saldo tidak cukup.');
+      throw Exception('Saldo tidak cukup');
     }
 
-    // 3. Masukkan transaksi
     final transaksi = Transaksi(
-      // idTransaksi omitted; generated by DB
       idPengguna: pengirimId,
       idKategori: kategoriId,
       targetPengguna: penerima.idPengguna,
-      targetMerchant: '',
+      targetMerchant: null,
       totalTransaksi: nominal,
       deskripsi: deskripsi,
       metodeTransaksi: metodeTransaksi,
@@ -186,22 +59,8 @@ class SendController {
       waktuDibuat: DateTime.now(),
     );
 
-    await supabase
-      .from('Transaksi')
-      .insert(transaksi.toMap())
-      .select()
-      .single();
-
-    // 4. Update saldo pengirim
-    await supabase
-        .from('Pengguna')
-        .update({'saldo': pengirim.saldo - totalPotong})
-        .eq('id_pengguna', pengirimId);
-
-    // 5. Update saldo penerima
-    await supabase
-        .from('Pengguna')
-        .update({'saldo': penerima.saldo + nominal})
-        .eq('id_pengguna', penerima.idPengguna);
+    await Transaksi.insert(transaksi);
+    await Pengguna.decreaseSaldo(pengirimId, totalPotong);
+    await Pengguna.increaseSaldo(penerima.idPengguna, nominal);
   }
 }

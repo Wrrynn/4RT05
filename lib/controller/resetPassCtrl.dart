@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../model/pengguna.dart';
 
 class ForgotPasswordController {
-  final SupabaseClient _supabase = Supabase.instance.client;
+  // HAPUS: final SupabaseClient _supabase ... (Tidak boleh ada di Controller MVC Murni)
 
   /// validasi password:
   /// minimal 6 karakter + kombinasi huruf & angka
@@ -45,30 +44,23 @@ class ForgotPasswordController {
     }
 
     try {
-      // 4. Cari pengguna berdasarkan email & telepon
-      final data = await _supabase
-          .from('Pengguna')
-          .select()
-          .eq('email', email)
-          .eq('telepon', telepon)
-          .maybeSingle();
+      // 4. Cari pengguna (Panggil Model)
+      // Controller tidak tahu soal "select * from ...", dia hanya minta data ke Model.
+      final pengguna = await Pengguna.findByEmailAndPhone(email, telepon);
 
-      if (data == null) {
+      if (pengguna == null) {
         _showSnack(context, "Email atau nomor telepon tidak ditemukan");
         return;
       }
 
-      final pengguna = Pengguna.fromJson(data);
-
-      // 5. Update password
-      await _supabase
-          .from('Pengguna')
-          .update({'password': newPassword})
-          .eq('id_pengguna', pengguna.idPengguna);
+      // 5. Update password (Panggil Model)
+      await Pengguna.updatePassword(pengguna.idPengguna, newPassword);
 
       _showSnack(context, "Password ${pengguna.namaLengkap} berhasil diubah");
 
-      Navigator.pop(context);
+      if (context.mounted) {
+        Navigator.pop(context);
+      }
     } catch (e) {
       _showSnack(context, "Terjadi kesalahan: $e");
     }

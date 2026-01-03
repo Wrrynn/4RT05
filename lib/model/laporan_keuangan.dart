@@ -1,3 +1,5 @@
+import 'package:artos/service/db_service.dart';
+
 class ModelLaporan {
   final String? idLaporan; // nullable
   final String idPengguna;
@@ -48,5 +50,11 @@ class ModelLaporan {
       idTransaksi: json['id_transaksi'],
       idTopup: json['id_topup'],
     );
+  }
+
+  static final _supabase = DBService.client;
+
+  static Future<void> insert(ModelLaporan laporan) async {
+    await _supabase.from('Laporan Keuangan').insert(laporan.toInsertJson());
   }
 }
