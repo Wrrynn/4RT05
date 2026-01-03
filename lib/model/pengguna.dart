@@ -1,5 +1,7 @@
+import 'package:artos/service/db_service.dart';
+
 class Pengguna {
-  final String idPengguna;      
+  final String idPengguna;
   String namaLengkap;
   final String email;
   final String password;
@@ -17,7 +19,7 @@ class Pengguna {
     this.saldo = 0,
   });
 
-  // Convert model → JSON (untuk insert Supabase)
+  // Convert model → JSON
   Map<String, dynamic> toJson() {
     return {
       'id_pengguna': idPengguna,
@@ -29,7 +31,7 @@ class Pengguna {
     };
   }
 
-  // Convert JSON → model (untuk fetch)
+  // Convert JSON → model
   factory Pengguna.fromJson(Map<String, dynamic> json) {
     return Pengguna(
       idPengguna: json['id_pengguna'],
@@ -40,5 +42,22 @@ class Pengguna {
       rekening: json['rekening'],
       saldo: (json['saldo'] as num).toDouble(),
     );
+  }
+
+  /* =======================
+     DATABASE (MODEL LAYER)
+     ======================= */
+
+  static Future<Pengguna?> findById(String idPengguna) async {
+    final supabase = DBService.client;
+
+    final data = await supabase
+        .from('Pengguna')
+        .select()
+        .eq('id_pengguna', idPengguna)
+        .maybeSingle();
+
+    if (data == null) return null;
+    return Pengguna.fromJson(data);
   }
 }
